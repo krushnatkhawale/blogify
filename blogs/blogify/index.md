@@ -55,7 +55,11 @@ takeaways:
 
 ## Why Tech Blogging Is Hard
 
-![Why Tech Blogging Is Hard](why-tech-blogging-is-hard.jpg)
+![⏳ 1. Writing Takes Too Long (Hours Drafting From Scratch)](problem-1-writing-takes-too-long.jpg)
+![🔄 2. Code Changes, Blogs Don't (Documentation Drift & Errors)](problem-2-code-changes-blogs-dont.jpg)
+![📋 3. Tedious Copy-Pasting (Clunky Editors & Indentation Hell)](problem-3-tedious-copy-pasting.jpg)
+![⚙️ 4. Clunky Blog Tools (NPM Dependency & Theme Hell)](problem-4-clunky-blog-tools.jpg)
+![🚀 5. Publishing Headaches (Failed Pipelines & Deploy Headaches)](problem-5-publishing-headaches.jpg)
 
 Most developers and tech bloggers start with great intentions. We want to share lessons learned, explain architecture decisions, and help other engineers. But maintaining a blog quickly becomes exhausting:
 

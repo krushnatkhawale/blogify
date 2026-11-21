@@ -551,6 +551,88 @@ public class HtmlGenerator {
                       var curTheme = document.documentElement.getAttribute('data-theme') || 'primer';
                       var sel = document.getElementById('theme-select');
                       if (sel) sel.value = curTheme;
+
+                      // Auto-playing Carousel Controller
+                      document.querySelectorAll('.carousel-container').forEach(function(carousel) {
+                        var slides = carousel.querySelectorAll('.carousel-slide');
+                        var dots = carousel.querySelectorAll('.carousel-dot');
+                        var prevBtn = carousel.querySelector('.carousel-prev');
+                        var nextBtn = carousel.querySelector('.carousel-next');
+                        if (slides.length <= 1) {
+                          if (prevBtn) prevBtn.style.display = 'none';
+                          if (nextBtn) nextBtn.style.display = 'none';
+                          var dotsWrap = carousel.querySelector('.carousel-dots');
+                          if (dotsWrap) dotsWrap.style.display = 'none';
+                          return;
+                        }
+                        var curIdx = 0;
+                        var autoplayInterval = parseInt(carousel.getAttribute('data-autoplay') || '4000', 10);
+                        var timer = null;
+
+                        function showSlide(idx) {
+                          if (idx < 0) idx = slides.length - 1;
+                          if (idx >= slides.length) idx = 0;
+                          curIdx = idx;
+                          slides.forEach(function(s, i) {
+                            if (i === curIdx) {
+                              s.classList.add('active');
+                            } else {
+                              s.classList.remove('active');
+                            }
+                          });
+                          dots.forEach(function(d, i) {
+                            if (i === curIdx) {
+                              d.classList.add('active');
+                            } else {
+                              d.classList.remove('active');
+                            }
+                          });
+                        }
+
+                        function startTimer() {
+                          if (autoplayInterval > 0 && !timer) {
+                            timer = setInterval(function() {
+                              showSlide(curIdx + 1);
+                            }, autoplayInterval);
+                          }
+                        }
+
+                        function stopTimer() {
+                          if (timer) {
+                            clearInterval(timer);
+                            timer = null;
+                          }
+                        }
+
+                        if (prevBtn) {
+                          prevBtn.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            showSlide(curIdx - 1);
+                          });
+                        }
+
+                        if (nextBtn) {
+                          nextBtn.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            showSlide(curIdx + 1);
+                          });
+                        }
+
+                        dots.forEach(function(dot) {
+                          dot.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            var i = parseInt(dot.getAttribute('data-index'), 10);
+                            showSlide(i);
+                          });
+                        });
+
+                        carousel.addEventListener('mouseenter', stopTimer);
+                        carousel.addEventListener('mouseleave', startTimer);
+                        carousel.addEventListener('touchstart', stopTimer, { passive: true });
+                        carousel.addEventListener('touchend', startTimer, { passive: true });
+
+                        startTimer();
+                      });
                     });
                   </script>
                 """;
@@ -683,6 +765,43 @@ public class HtmlGenerator {
                 """;
     }
 
+    private static final Pattern IMG_BLOCK_PATTERN = Pattern.compile("^!\\[([^\\]]*)\\]\\(([^\\)]+)\\)$");
+
+    private String renderCarousel(List<String[]> images) {
+        if (images.isEmpty()) return "";
+        if (images.size() == 1) {
+            String alt = images.get(0)[0];
+            String src = images.get(0)[1];
+            return "    <div class=\"img-wrapper\"><img src=\"" + escapeHtml(src) + "\" alt=\"" + escapeHtml(alt) + "\" class=\"md-img\"></div>\n\n";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("    <div class=\"carousel-container\" data-autoplay=\"4000\">\n");
+        sb.append("      <div class=\"carousel-track\">\n");
+        for (int idx = 0; idx < images.size(); idx++) {
+            String alt = images.get(idx)[0];
+            String src = images.get(idx)[1];
+            String activeClass = (idx == 0) ? " active" : "";
+            sb.append("        <div class=\"carousel-slide").append(activeClass).append("\">\n");
+            sb.append("          <img src=\"").append(escapeHtml(src)).append("\" alt=\"").append(escapeHtml(alt)).append("\" class=\"carousel-img\">\n");
+            if (!alt.isBlank()) {
+                sb.append("          <div class=\"carousel-caption\">").append(escapeHtml(alt)).append("</div>\n");
+            }
+            sb.append("        </div>\n");
+        }
+        sb.append("      </div>\n");
+        sb.append("      <button class=\"carousel-prev\" aria-label=\"Previous slide\">&#10094;</button>\n");
+        sb.append("      <button class=\"carousel-next\" aria-label=\"Next slide\">&#10095;</button>\n");
+        sb.append("      <div class=\"carousel-dots\">\n");
+        for (int idx = 0; idx < images.size(); idx++) {
+            String activeDot = (idx == 0) ? " active" : "";
+            sb.append("        <span class=\"carousel-dot").append(activeDot).append("\" data-index=\"").append(idx).append("\"></span>\n");
+        }
+        sb.append("      </div>\n");
+        sb.append("    </div>\n\n");
+        return sb.toString();
+    }
+
     private String renderMarkdownToHtml(String md) {
         if (md == null || md.isBlank()) {
             return "";
@@ -696,7 +815,9 @@ public class HtmlGenerator {
 
         boolean inList = false;
 
-        for (String line : lines) {
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+
             if (line.startsWith("```")) {
                 if (inList) {
                     sb.append("    </ul>\n");
@@ -712,6 +833,15 @@ public class HtmlGenerator {
                         sb.append("    <div class=\"diagram-card\"><div class=\"mermaid\">\n");
                         sb.append(codeContent.toString());
                         sb.append("    </div></div>\n\n");
+                    } else if ("carousel".equalsIgnoreCase(codeLang)) {
+                        List<String[]> carouselImages = new ArrayList<>();
+                        for (String cLine : codeContent.toString().split("\r?\n")) {
+                            Matcher m = IMG_BLOCK_PATTERN.matcher(cLine.trim());
+                            if (m.matches()) {
+                                carouselImages.add(new String[]{m.group(1), m.group(2)});
+                            }
+                        }
+                        sb.append(renderCarousel(carouselImages));
                     } else {
                         sb.append("    <div class=\"code-wrapper\">\n");
                         if (!codeLang.isBlank()) {
@@ -726,6 +856,28 @@ public class HtmlGenerator {
 
             if (inCode) {
                 codeContent.append(line).append("\n");
+                continue;
+            }
+
+            // Check for standalone or consecutive image lines
+            Matcher imgMatcher = IMG_BLOCK_PATTERN.matcher(line.trim());
+            if (imgMatcher.matches()) {
+                if (inList) {
+                    sb.append("    </ul>\n");
+                    inList = false;
+                }
+                List<String[]> consecutiveImages = new ArrayList<>();
+                consecutiveImages.add(new String[]{imgMatcher.group(1), imgMatcher.group(2)});
+                while (i + 1 < lines.length) {
+                    Matcher nextMatcher = IMG_BLOCK_PATTERN.matcher(lines[i + 1].trim());
+                    if (nextMatcher.matches()) {
+                        consecutiveImages.add(new String[]{nextMatcher.group(1), nextMatcher.group(2)});
+                        i++;
+                    } else {
+                        break;
+                    }
+                }
+                sb.append(renderCarousel(consecutiveImages));
                 continue;
             }
 
@@ -1296,6 +1448,103 @@ public class HtmlGenerator {
                   border-radius: 8px;
                   border: 1px solid var(--border);
                   box-shadow: var(--shadow);
+                }
+
+                /* Auto-playing Carousel */
+                .carousel-container {
+                  position: relative;
+                  overflow: hidden;
+                  border-radius: 10px;
+                  border: 1px solid var(--border);
+                  box-shadow: var(--shadow);
+                  margin: 2.2rem 0;
+                  background: var(--bg-secondary);
+                }
+                .carousel-track {
+                  position: relative;
+                  width: 100%;
+                  min-height: 200px;
+                }
+                .carousel-slide {
+                  display: none;
+                  opacity: 0;
+                  transition: opacity 0.5s ease-in-out;
+                  text-align: center;
+                }
+                .carousel-slide.active {
+                  display: block;
+                  opacity: 1;
+                }
+                .carousel-img {
+                  width: 100%;
+                  height: auto;
+                  max-height: 540px;
+                  object-fit: cover;
+                  display: block;
+                }
+                .carousel-caption {
+                  position: absolute;
+                  bottom: 0;
+                  left: 0;
+                  right: 0;
+                  background: linear-gradient(transparent, rgba(0, 0, 0, 0.88));
+                  color: #ffffff;
+                  padding: 1.5rem 1.25rem 2.2rem 1.25rem;
+                  font-weight: 600;
+                  font-size: 0.98rem;
+                  text-align: center;
+                  letter-spacing: 0.3px;
+                  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+                }
+                .carousel-prev,
+                .carousel-next {
+                  position: absolute;
+                  top: 50%;
+                  transform: translateY(-50%);
+                  background: rgba(0, 0, 0, 0.45);
+                  color: #ffffff;
+                  border: none;
+                  width: 42px;
+                  height: 42px;
+                  border-radius: 50%;
+                  cursor: pointer;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  font-size: 1.3rem;
+                  transition: background 0.2s, transform 0.2s;
+                  z-index: 10;
+                  user-select: none;
+                }
+                .carousel-prev:hover,
+                .carousel-next:hover {
+                  background: rgba(0, 0, 0, 0.85);
+                  transform: translateY(-50%) scale(1.1);
+                }
+                .carousel-prev { left: 14px; }
+                .carousel-next { right: 14px; }
+                .carousel-dots {
+                  position: absolute;
+                  bottom: 10px;
+                  left: 0;
+                  right: 0;
+                  display: flex;
+                  justify-content: center;
+                  gap: 9px;
+                  z-index: 11;
+                }
+                .carousel-dot {
+                  width: 10px;
+                  height: 10px;
+                  border-radius: 50%;
+                  background: rgba(255, 255, 255, 0.45);
+                  cursor: pointer;
+                  transition: all 0.25s ease;
+                }
+                .carousel-dot.active {
+                  background: #ffffff;
+                  transform: scale(1.35);
+                  box-shadow: 0 0 5px rgba(255, 255, 255, 0.9);
                 }
 
                 /* Code wrapper and collapsible drawers */
