@@ -11,15 +11,15 @@ commit: "98ed70b"
 repoUrl: "https://github.com/krushnatkhawale/blogify"
 status: "active"
 problem: |
-  Why your tech docs die in 30 days:
-  - 💀 The Wiki Graveyard: Notion and Confluence docs rot the moment you merge code.
-  - 📦 The 300MB Node.js Tax: Why install npm, Node, and 40k files in a pure Java repo?
-  - 🚨 Production JAR Bloat: Embedding docs engines into Spring Boot? Enjoy bloated 80MB JARs.
-  - 💥 CI/CD Token Hell: 70 lines of fragile GitHub Actions YAML just to publish HTML.
-  - 🤖 Invisible to AI: No llms.txt manifest = AI coding agents can't find your architecture.
+  Why developers and tech bloggers struggle to keep blogs active:
+  - ⏳ Writing Takes Too Long: Staring at a blank screen and drafting detailed technical posts takes hours.
+  - 🔄 Code Changes, Blogs Don't: Software evolves quickly, leaving old blog posts filled with broken code.
+  - 📋 Tedious Copy-Pasting: Moving code snippets between IDEs and blog platforms is clunky and error-prone.
+  - ⚙️ Clunky Blog Tools: Learning separate web frameworks and wrestling with themes distracts from coding.
+  - 🚀 Publishing Headaches: Setting up servers, hosting, and deploy scripts turns blogging into a chore.
 insight: |
-  Blogify introduces a zero-runtime, compile-time Gradle static blog engine that lives right inside your build.
-  It scans root blogs/ directory bundles and native Javadoc tags, generates responsive multi-theme HTML with Mermaid diagrams and immutable commit SHA badges, and publishes directly to GitHub Pages on demand with zero external dependencies.
+  Blogify solves this by automating technical blogging with AI directly inside your project.
+  An AI assistant can draft architecture articles from your real code, Blogify keeps snippets in sync with Git, and a single Gradle command compiles and publishes a responsive website to GitHub Pages.
 diagram: |
   flowchart TD
     subgraph Sources["1. Architecture & Blog Sources"]
@@ -53,38 +53,37 @@ takeaways:
   - "Publishing should be frictionless: an on-demand task pushes directly to GitHub Pages without complex CI actions."
 ---
 
-## Why Another Blog Generator?
+## Why Tech Blogging Is Hard
 
-![Why Your Tech Docs Die](why-tech-docs-die.jpg)
+![Why Tech Blogging Is Hard](why-tech-blogging-is-hard.jpg)
 
-If you've ever tried maintaining engineering blogs or architecture decision records, you know the pain:
+Most developers and tech bloggers start with great intentions. We want to share lessons learned, explain architecture decisions, and help other engineers. But maintaining a blog quickly becomes exhausting:
 
-### 💀 1. The Wiki Graveyard
-> *"We wrote great docs on Notion 3 months ago... none of it works anymore."*
+### ⏳ 1. Writing Takes Too Much Time
+Drafting a technical guide from scratch—explaining the problem, structuring the narrative, and formatting code—often takes 4 to 8 hours. Between sprint deadlines and shipping features, few engineers have time for that.
 
-Code moves at Git commit speed. External wikis don't compile, don't run tests, and don't fail builds. The moment your team refactors an API, your external wiki becomes a graveyard of outdated architecture.
+### 🔄 2. Code Changes, Blogs Don't
+Software is never static. A month after publishing, you refactor a service, upgrade a library, or change method signatures. Your blog now teaches outdated code that confuses readers.
 
-### 📦 2. The 300MB Node.js Tax
-> *"Why is our Java backend CI build failing on npm audit vulnerabilities?!"*
+### 📋 3. Copy-Pasting Code Snippets
+Switching between your code editor and a web blog platform to copy, format, and re-indent code snippets is tedious and easily introduces syntax errors.
 
-Static site generators like Docusaurus, Astro, and Next.js are great—until you realize you just brought `package.json`, `node_modules`, and 40,000 JavaScript files into a clean Java Gradle repository. Why should a backend engineer debug npm lockfile conflicts just to write a blog post?
+### ⚙️ 4. Blog Tools Are Too Complicated
+Most blogging tools require learning separate website frameworks, installing extra runtimes, or wrestling with templates and CSS just to share a few paragraphs and code samples.
 
-### 🚨 3. Production JAR Bloat
-> *"Don't bundle your documentation viewer inside production Spring Boot."*
+### 🚀 5. Publishing Is a Pain
+Setting up hosting services, deployment keys, and continuous delivery scripts makes publishing feel like an operations project instead of simple writing.
 
-Teams attempting to serve docs directly from microservices often bundle Swagger UI, heavy markdown rendering engines, or static controllers into production JARs—inflating container image sizes and needlessly expanding the attack surface.
+---
 
-### 💥 4. CI/CD Token Hell
-> *"70 lines of GitHub Actions YAML and expiring PAT tokens just to push HTML?"*
+## The Solution: AI-Automated Blogging with Blogify
 
-Automating static site hosting shouldn't require managing fragile workflow files, personal access tokens, and waiting 4 minutes for CI runners just to fix a typo. Publishing should be a single, on-demand task from your machine.
+Blogify was built to make technical blogging effortless by pairing **AI automation** with a **zero-overhead Gradle plugin**:
 
-### 🤖 5. Invisible to AI Agents
-> *"ChatGPT and Cursor couldn't find our core architecture patterns."*
-
-Modern developers code with Cursor, Copilot, and LLMs. If your documentation doesn't export a token-efficient `/llms.txt` and `/llms-full.txt`, AI agents can't index your system design and will hallucinate non-existent APIs.
-
-Blogify solves all five traps: **zero runtime dependencies, zero external toolchains, and 100% on-demand execution directly in Gradle.**
+1. **Draft with AI in Seconds**: Feed your code or system design to your favorite AI assistant (ChatGPT, Claude, Cursor, Copilot) and ask it to draft a Blogify leaf bundle.
+2. **Never Out of Sync**: Blog articles live right in your project repository under `blogs/`. Code snippets and architecture decisions stay anchored to your Git history.
+3. **Zero Extra Tools to Install**: No Node.js, Ruby, or website generators needed. A single Gradle plugin handles responsive HTML generation, dark/light themes, and interactive Mermaid diagrams.
+4. **Publish in One Command**: Run `./gradlew publishBlog` to build and deploy directly to GitHub Pages on demand—no servers, tokens, or complex setups required.
 
 ---
 
