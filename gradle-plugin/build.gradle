@@ -1,0 +1,27 @@
+plugins {
+    id 'java-gradle-plugin'
+    id 'com.gradle.plugin-publish' version '1.3.1'
+}
+
+dependencies {
+    implementation project(':core')
+
+    testImplementation gradleTestKit()
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+gradlePlugin {
+    website = 'https://github.com/blogify/blogify'
+    vcsUrl = 'https://github.com/blogify/blogify.git'
+    plugins {
+        blogify {
+            id = 'io.github.blogify'
+            displayName = 'Blogify Gradle Plugin'
+            description = 'Generates static Markdown blog posts from Java source annotations at build time'
+            tags.set(['blog', 'documentation', 'markdown', 'generator', 'static-site'])
+            implementationClass = 'io.github.blogify.gradle.BlogifyPlugin'
+        }
+    }
+}

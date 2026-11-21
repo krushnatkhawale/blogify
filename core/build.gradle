@@ -1,0 +1,18 @@
+dependencies {
+    api 'com.github.javaparser:javaparser-core:3.26.2'
+
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            pom {
+                name = 'Blogify Core'
+                description = 'Core AST parser, annotations, and Markdown generator for Blogify'
+            }
+        }
+    }
+}

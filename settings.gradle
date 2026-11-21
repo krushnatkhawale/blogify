@@ -1,0 +1,5 @@
+rootProject.name = 'blogify'
+
+include 'core'
+include 'gradle-plugin'
+include 'sample'

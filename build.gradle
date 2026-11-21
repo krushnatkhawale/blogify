@@ -1,0 +1,90 @@
+plugins {
+    id 'base'
+    id 'maven-publish'
+    id 'signing'
+}
+
+allprojects {
+    group = 'io.github.blogify'
+    version = '0.1.0-SNAPSHOT'
+
+    repositories {
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+subprojects {
+    apply plugin: 'java-library'
+    apply plugin: 'maven-publish'
+    apply plugin: 'signing'
+
+    java {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+        withSourcesJar()
+        withJavadocJar()
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+        options.compilerArgs << '-parameters'
+    }
+
+    tasks.withType(Javadoc).configureEach {
+        options.encoding = 'UTF-8'
+        if (options instanceof StandardJavadocDocletOptions) {
+            ((StandardJavadocDocletOptions) options).addStringOption('Xdoclint:none', '-quiet')
+        }
+    }
+
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
+        testLogging {
+            events 'passed', 'skipped', 'failed'
+            showStandardStreams = true
+        }
+    }
+
+    publishing {
+        publications {
+            mavenJava(MavenPublication) {
+                from components.java
+
+                pom {
+                    name = project.name
+                    description = 'Blogify: Compile-time static blog generator Gradle plugin and core engine'
+                    url = 'https://github.com/blogify/blogify'
+                    licenses {
+                        license {
+                            name = 'The Apache License, Version 2.0'
+                            url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                        }
+                    }
+                    developers {
+                        developer {
+                            id = 'blogify-team'
+                            name = 'Blogify Contributors'
+                            email = 'maintainers@blogify.io'
+                        }
+                    }
+                    scm {
+                        connection = 'scm:git:git://github.com/blogify/blogify.git'
+                        developerConnection = 'scm:git:ssh://github.com:blogify/blogify.git'
+                        url = 'https://github.com/blogify/blogify'
+                    }
+                }
+            }
+        }
+    }
+
+    signing {
+        required { gradle.taskGraph.hasTask('publish') && !version.endsWith('-SNAPSHOT') }
+        def signingKey = findProperty('signingKey') ?: System.getenv('SIGNING_KEY')
+        def signingPassword = findProperty('signingPassword') ?: System.getenv('SIGNING_PASSWORD')
+        if (signingKey && signingPassword) {
+            useInMemoryPgpKeys(signingKey, signingPassword)
+            sign publishing.publications.mavenJava
+        }
+    }
+}

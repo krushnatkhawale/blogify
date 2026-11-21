@@ -1,0 +1,50 @@
+package io.github.blogify.core.parser;
+
+import io.github.blogify.core.model.BlogPostModel;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Stream;
+
+/**
+ * Traverses one or more directory paths to locate and parse Java source files.
+ */
+public class BlogSourceScanner {
+
+    private final JavaSourceBlogParser parser = new JavaSourceBlogParser();
+
+    public List<BlogPostModel> scan(File rootDir) throws IOException {
+        if (rootDir == null || !rootDir.exists()) {
+            return Collections.emptyList();
+        }
+        return scan(rootDir.toPath());
+    }
+
+    public List<BlogPostModel> scan(Path rootPath) throws IOException {
+        if (rootPath == null || !Files.exists(rootPath)) {
+            return Collections.emptyList();
+        }
+
+        List<BlogPostModel> posts = new ArrayList<>();
+        try (Stream<Path> stream = Files.walk(rootPath)) {
+            stream.filter(Files::isRegularFile)
+                  .filter(p -> p.toString().endsWith(".java"))
+                  .forEach(p -> {
+                      try {
+                          List<BlogPostModel> parsed = parser.parse(p);
+                          posts.addAll(parsed);
+                      } catch (Exception e) {
+                          System.err.println("[Blogify] Warning: failed to parse " + p + ": " + e.getMessage());
+                      }
+                  });
+        }
+
+        Collections.sort(posts);
+        return posts;
+    }
+}
