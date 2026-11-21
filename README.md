@@ -29,7 +29,7 @@ blogify/
 ├── blogs/                 # Dedicated root articles (leaf bundle: blogs/<slug>/index.md)
 ├── skills/blogify/        # LLM authoring skill (SKILL.md)
 ├── core/                  # Standalone Java generator (Markdown, HTML, Jekyll, AST parsers)
-├── gradle-plugin/         # Gradle plugin wrapper (io.github.blogify)
+├── gradle-plugin/         # Gradle plugin wrapper (io.github.krushnatkhawale.blogify)
 ├── sample/                # Consumer module demonstrating zero runtime compile overhead
 ├── build.gradle           # Root Gradle build configuration
 └── settings.gradle        # Multi-module settings

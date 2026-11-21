@@ -5,8 +5,8 @@ plugins {
 }
 
 allprojects {
-    group = 'io.github.krushnatkhawale'
-    version = '0.1.0-SNAPSHOT'
+    group = 'io.github.krushnatkhawale.blogify'
+    version = '0.1.0'
 
     repositories {
         mavenCentral()
