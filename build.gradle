@@ -5,7 +5,7 @@ plugins {
 }
 
 allprojects {
-    group = 'io.github.blogify'
+    group = 'io.github.krushnatkhawale'
     version = '0.1.0-SNAPSHOT'
 
     repositories {
@@ -16,8 +16,6 @@ allprojects {
 
 subprojects {
     apply plugin: 'java-library'
-    apply plugin: 'maven-publish'
-    apply plugin: 'signing'
 
     java {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -46,45 +44,52 @@ subprojects {
         }
     }
 
-    publishing {
-        publications {
-            mavenJava(MavenPublication) {
-                from components.java
+    // Configure publishing and signing only for distributable libraries (:core and :gradle-plugin)
+    if (project.name != 'sample') {
+        apply plugin: 'maven-publish'
+        apply plugin: 'signing'
 
-                pom {
-                    name = project.name
-                    description = 'Blogify: Compile-time static blog generator Gradle plugin and core engine'
-                    url = 'https://github.com/blogify/blogify'
-                    licenses {
-                        license {
-                            name = 'The Apache License, Version 2.0'
-                            url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+        // :core publication (for maven publication / central)
+        if (project.name == 'core') {
+            publishing {
+                publications {
+                    mavenJava(MavenPublication) {
+                        from components.java
+                        pom {
+                            name = 'Blogify Core'
+                            description = 'Blogify: Core static blog generator engine and markdown parsers'
+                            url = 'https://github.com/krushnatkhawale/blogify'
+                            licenses {
+                                license {
+                                    name = 'The Apache License, Version 2.0'
+                                    url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                                }
+                            }
+                            developers {
+                                developer {
+                                    id = 'krushnatkhawale'
+                                    name = 'Krushnat Khawale'
+                                }
+                            }
+                            scm {
+                                connection = 'scm:git:git://github.com/krushnatkhawale/blogify.git'
+                                developerConnection = 'scm:git:ssh://github.com:krushnatkhawale/blogify.git'
+                                url = 'https://github.com/krushnatkhawale/blogify'
+                            }
                         }
-                    }
-                    developers {
-                        developer {
-                            id = 'blogify-team'
-                            name = 'Blogify Contributors'
-                            email = 'maintainers@blogify.io'
-                        }
-                    }
-                    scm {
-                        connection = 'scm:git:git://github.com/blogify/blogify.git'
-                        developerConnection = 'scm:git:ssh://github.com:blogify/blogify.git'
-                        url = 'https://github.com/blogify/blogify'
                     }
                 }
             }
         }
-    }
 
-    signing {
-        required { gradle.taskGraph.hasTask('publish') && !version.endsWith('-SNAPSHOT') }
-        def signingKey = findProperty('signingKey') ?: System.getenv('SIGNING_KEY')
-        def signingPassword = findProperty('signingPassword') ?: System.getenv('SIGNING_PASSWORD')
-        if (signingKey && signingPassword) {
-            useInMemoryPgpKeys(signingKey, signingPassword)
-            sign publishing.publications.mavenJava
+        signing {
+            required { gradle.taskGraph.hasTask('publish') && !version.endsWith('-SNAPSHOT') }
+            def signingKey = findProperty('signingKey') ?: System.getenv('SIGNING_KEY')
+            def signingPassword = findProperty('signingPassword') ?: System.getenv('SIGNING_PASSWORD')
+            if (signingKey && signingPassword) {
+                useInMemoryPgpKeys(signingKey, signingPassword)
+                sign publishing.publications
+            }
         }
     }
 }

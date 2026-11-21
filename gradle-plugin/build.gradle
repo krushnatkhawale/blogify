@@ -13,14 +13,14 @@ dependencies {
 }
 
 gradlePlugin {
-    website = 'https://github.com/blogify/blogify'
-    vcsUrl = 'https://github.com/blogify/blogify.git'
+    website = 'https://github.com/krushnatkhawale/blogify'
+    vcsUrl = 'https://github.com/krushnatkhawale/blogify.git'
     plugins {
         blogify {
-            id = 'io.github.blogify'
+            id = 'io.github.krushnatkhawale.blogify'
             displayName = 'Blogify Gradle Plugin'
-            description = 'Generates static Markdown blog posts from Java source annotations at build time'
-            tags.set(['blog', 'documentation', 'markdown', 'generator', 'static-site'])
+            description = 'Story-first static engineering blog generator from source code and Markdown bundles with on-demand GitHub Pages deployment'
+            tags.set(['blog', 'documentation', 'markdown', 'github-pages', 'static-site'])
             implementationClass = 'io.github.blogify.gradle.BlogifyPlugin'
         }
     }

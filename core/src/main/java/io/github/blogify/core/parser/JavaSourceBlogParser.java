@@ -29,7 +29,7 @@ import java.util.Optional;
 
 /**
  * Parses Java source files using JavaParser AST to extract Blogify annotations,
- * Javadocs, and source code blocks.
+ * Javadoc tags (@blog.title, @blog.section, @author, etc.), prose, and code blocks.
  */
 public class JavaSourceBlogParser {
 
@@ -48,7 +48,10 @@ public class JavaSourceBlogParser {
         for (ClassOrInterfaceDeclaration clazz : cu.findAll(ClassOrInterfaceDeclaration.class)) {
             Optional<AnnotationExpr> blogPostAnno = findAnnotation(clazz.getAnnotations(), "BlogPost");
             if (blogPostAnno.isPresent()) {
-                BlogPostModel model = buildClassBlogPost(clazz, blogPostAnno.get());
+                BlogPostModel model = buildClassBlogPostFromAnnotation(clazz, blogPostAnno.get());
+                blogPosts.add(model);
+            } else if (hasBlogJavadoc(clazz)) {
+                BlogPostModel model = buildClassBlogPostFromJavadoc(clazz);
                 blogPosts.add(model);
             }
         }
@@ -56,7 +59,140 @@ public class JavaSourceBlogParser {
         return blogPosts;
     }
 
-    private BlogPostModel buildClassBlogPost(ClassOrInterfaceDeclaration clazz, AnnotationExpr anno) {
+    private boolean hasBlogJavadoc(ClassOrInterfaceDeclaration clazz) {
+        if (!clazz.getComment().isPresent()) {
+            return false;
+        }
+        JavadocMetadata meta = JavadocMetadata.parse(clazz.getComment().get());
+        return meta.hasAnyBlogTag() || meta.hasTag("@blog", "@blog.post", "@blog.title", "@blogpost");
+    }
+
+    /**
+     * Builds a BlogPostModel from Javadoc comments without requiring any Java annotations.
+     */
+    private BlogPostModel buildClassBlogPostFromJavadoc(ClassOrInterfaceDeclaration clazz) {
+        JavadocMetadata meta = JavadocMetadata.parse(clazz.getComment().orElse(null));
+
+        String title = meta.getTag("@blog.title", "@blog.post");
+        if (title.isBlank()) {
+            title = humanizeIdentifier(clazz.getNameAsString());
+        }
+
+        String slug = meta.getTag("@blog.slug");
+        if (slug.isBlank()) {
+            slug = slugify(title);
+        }
+
+        String author = meta.getTag("@blog.author", "@author");
+        String date = meta.getTag("@blog.date", "@since", "@version");
+        if (date.isBlank() || !date.matches("^\\d{4}-\\d{2}-\\d{2}$")) {
+            date = LocalDate.now().toString();
+        }
+
+        String description = meta.getTag("@blog.desc", "@blog.description");
+        if (description.isBlank()) {
+            description = meta.getFirstSentence();
+        }
+
+        boolean draft = meta.getBooleanTag(false, "@blog.draft");
+        int order = meta.getIntTag(0, "@blog.order");
+
+        BlogPostModel post = new BlogPostModel(title, slug, author, date, description, draft, order);
+
+        // Tags
+        List<String> tags = meta.getCommaSeparatedTags("@blog.tags", "@blog.tag");
+        post.addTags(tags);
+
+        // Intro content
+        post.setIntroContent(meta.getProse());
+
+        // Story-First & Version Metadata
+        post.setProblem(meta.getTag("@blog.problem"));
+        post.setInsight(meta.getTag("@blog.insight"));
+        post.addTakeaways(meta.getTags("@blog.takeaway", "@blog.takeaways"));
+        post.setDiagram(meta.getTag("@blog.diagram"));
+        post.setVersion(meta.getTag("@blog.version"));
+        post.setCommitSha(meta.getTag("@blog.commit", "@blog.commitsha"));
+        post.setRepoUrl(meta.getTag("@blog.repourl"));
+        post.setStatus(meta.getTag("@blog.status"));
+        post.setSupersededBy(meta.getTag("@blog.supersededby"));
+        post.setSupersededMessage(meta.getTag("@blog.supersededmessage"));
+
+        // Scan methods for sections and code blocks
+        int methodSeq = 1;
+        for (MethodDeclaration method : clazz.getMethods()) {
+            // Check annotation first
+            Optional<AnnotationExpr> sectionAnno = findAnnotation(method.getAnnotations(), "BlogSection");
+            Optional<AnnotationExpr> codeBlockAnno = findAnnotation(method.getAnnotations(), "BlogCodeBlock");
+
+            if (sectionAnno.isPresent()) {
+                addSectionFromAnnotation(post, method, sectionAnno.get(), codeBlockAnno);
+                continue;
+            }
+
+            // Check Javadoc
+            if (method.getComment().isPresent()) {
+                JavadocMetadata mMeta = JavadocMetadata.parse(method.getComment().get());
+                if (mMeta.hasTag("@blog.ignore", "@blog.skip", "@hidden")) {
+                    continue;
+                }
+
+                if (mMeta.hasTag("@blog.section", "@blog.codeblock") || method.isPublic()) {
+                    String heading = mMeta.getTag("@blog.section");
+                    if (heading.isBlank()) {
+                        heading = humanizeIdentifier(method.getNameAsString());
+                    }
+                    String content = mMeta.getProse();
+                    int sOrder = mMeta.getIntTag(methodSeq++, "@blog.order");
+
+                    BlogSectionModel section = new BlogSectionModel(heading, content, sOrder);
+
+                    String desc = mMeta.getTag("@blog.codeblock", "@blog.desc", "@blog.description");
+                    if (desc.isBlank()) {
+                        desc = mMeta.getFirstSentence();
+                        if (desc.isBlank()) {
+                            desc = heading;
+                        }
+                    }
+                    String lang = mMeta.getTag("@blog.lang", "@blog.language");
+                    if (lang.isBlank()) {
+                        lang = "java";
+                    }
+
+                    // Extract clean method code without annotations or Javadoc comment clutter
+                    MethodDeclaration cleanMethod = method.clone();
+                    cleanMethod.removeComment();
+                    cleanMethod.getAnnotations().clear();
+                    String cleanCode = cleanMethod.toString().trim();
+
+                    String snippet = mMeta.getTag("@blog.snippet");
+                    String displayCode = !snippet.isBlank() ? snippet : cleanCode;
+                    String fullCode = !snippet.isBlank() ? cleanCode : "";
+
+                    BlogCodeBlockModel codeBlock = new BlogCodeBlockModel(lang, desc, displayCode, fullCode, sOrder);
+                    section.addCodeBlock(codeBlock);
+                    post.addSection(section);
+                }
+            }
+        }
+
+        // Scan fields for sections
+        for (FieldDeclaration field : clazz.getFields()) {
+            if (field.getComment().isPresent()) {
+                JavadocMetadata fMeta = JavadocMetadata.parse(field.getComment().get());
+                if (fMeta.hasTag("@blog.section")) {
+                    String heading = fMeta.getTag("@blog.section");
+                    String content = fMeta.getProse();
+                    int sOrder = fMeta.getIntTag(0, "@blog.order");
+                    post.addSection(new BlogSectionModel(heading, content, sOrder));
+                }
+            }
+        }
+
+        return post;
+    }
+
+    private BlogPostModel buildClassBlogPostFromAnnotation(ClassOrInterfaceDeclaration clazz, AnnotationExpr anno) {
         String title = getAnnotationString(anno, "title");
         if (title.isBlank()) {
             title = humanizeIdentifier(clazz.getNameAsString());
@@ -98,9 +234,7 @@ public class JavaSourceBlogParser {
             String cleanedComment = cleanJavadocComment(comment);
             post.setIntroContent(cleanedComment);
             if (post.getDescription().isBlank() && !cleanedComment.isBlank()) {
-                // If description was empty, extract first sentence of Javadoc
-                String firstSentence = extractFirstSentence(cleanedComment);
-                post.addTags(Collections.emptyList()); // retain
+                post.addTags(Collections.emptyList());
             }
         });
 
@@ -110,28 +244,24 @@ public class JavaSourceBlogParser {
             Optional<AnnotationExpr> codeBlockAnno = findAnnotation(method.getAnnotations(), "BlogCodeBlock");
 
             if (sectionAnno.isPresent()) {
-                AnnotationExpr sAnno = sectionAnno.get();
-                String heading = getAnnotationString(sAnno, "heading");
-                if (heading.isBlank()) {
-                    heading = humanizeIdentifier(method.getNameAsString());
-                }
-                String content = getAnnotationString(sAnno, "content");
-                if (content.isBlank() && method.getComment().isPresent()) {
-                    content = cleanJavadocComment(method.getComment().get());
-                }
-                int sOrder = getAnnotationInt(sAnno, "order", 0);
-
-                BlogSectionModel section = new BlogSectionModel(heading, content, sOrder);
-
-                if (codeBlockAnno.isPresent()) {
-                    BlogCodeBlockModel codeBlock = buildMethodCodeBlock(method, codeBlockAnno.get());
-                    section.addCodeBlock(codeBlock);
-                }
-
-                post.addSection(section);
+                addSectionFromAnnotation(post, method, sectionAnno.get(), codeBlockAnno);
             } else if (codeBlockAnno.isPresent()) {
                 BlogCodeBlockModel codeBlock = buildMethodCodeBlock(method, codeBlockAnno.get());
                 post.addStandaloneCodeBlock(codeBlock);
+            } else if (method.getComment().isPresent()) {
+                JavadocMetadata mMeta = JavadocMetadata.parse(method.getComment().get());
+                if (mMeta.hasTag("@blog.section")) {
+                    String heading = mMeta.getTag("@blog.section");
+                    String content = mMeta.getProse();
+                    int sOrder = mMeta.getIntTag(0, "@blog.order");
+                    BlogSectionModel section = new BlogSectionModel(heading, content, sOrder);
+                    String desc = mMeta.getTag("@blog.codeblock");
+                    MethodDeclaration cleanMethod = method.clone();
+                    cleanMethod.removeComment();
+                    cleanMethod.getAnnotations().clear();
+                    section.addCodeBlock(new BlogCodeBlockModel("java", desc.isBlank() ? heading : desc, cleanMethod.toString().trim(), sOrder));
+                    post.addSection(section);
+                }
             }
         }
 
@@ -151,6 +281,27 @@ public class JavaSourceBlogParser {
         }
 
         return post;
+    }
+
+    private void addSectionFromAnnotation(BlogPostModel post, MethodDeclaration method, AnnotationExpr sAnno, Optional<AnnotationExpr> codeBlockAnno) {
+        String heading = getAnnotationString(sAnno, "heading");
+        if (heading.isBlank()) {
+            heading = humanizeIdentifier(method.getNameAsString());
+        }
+        String content = getAnnotationString(sAnno, "content");
+        if (content.isBlank() && method.getComment().isPresent()) {
+            content = cleanJavadocComment(method.getComment().get());
+        }
+        int sOrder = getAnnotationInt(sAnno, "order", 0);
+
+        BlogSectionModel section = new BlogSectionModel(heading, content, sOrder);
+
+        if (codeBlockAnno.isPresent()) {
+            BlogCodeBlockModel codeBlock = buildMethodCodeBlock(method, codeBlockAnno.get());
+            section.addCodeBlock(codeBlock);
+        }
+
+        post.addSection(section);
     }
 
     private BlogCodeBlockModel buildMethodCodeBlock(MethodDeclaration method, AnnotationExpr anno) {
@@ -267,19 +418,11 @@ public class JavaSourceBlogParser {
             if (trimmed.startsWith("*")) {
                 trimmed = trimmed.substring(1).trim();
             }
-            if (!trimmed.startsWith("@")) { // Ignore javadoc tags like @author, @param
+            if (!trimmed.startsWith("@")) {
                 sb.append(trimmed).append("\n");
             }
         }
         return sb.toString().trim();
-    }
-
-    private String extractFirstSentence(String text) {
-        int idx = text.indexOf('.');
-        if (idx != -1) {
-            return text.substring(0, idx + 1).trim();
-        }
-        return text.lines().findFirst().orElse("");
     }
 
     public static String slugify(String text) {
@@ -297,7 +440,10 @@ public class JavaSourceBlogParser {
         if (identifier == null || identifier.isBlank()) {
             return "";
         }
-        // Split camelCase or PascalCase into words
-        return identifier.replaceAll("(?<!^)(?=[A-Z])", " ");
+        String spaced = identifier.replaceAll("(?<!^)(?=[A-Z])", " ");
+        if (Character.isLowerCase(spaced.charAt(0))) {
+            spaced = Character.toUpperCase(spaced.charAt(0)) + spaced.substring(1);
+        }
+        return spaced;
     }
 }

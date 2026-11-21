@@ -19,14 +19,32 @@ public class BlogifyEngine {
     private final BlogSourceScanner scanner;
     private final MarkdownGenerator markdownGenerator;
     private final BlogSiteIndexGenerator indexGenerator;
+    private final JekyllGenerator jekyllGenerator;
+    private final HtmlGenerator htmlGenerator;
 
     public BlogifyEngine() {
         this.scanner = new BlogSourceScanner();
         this.markdownGenerator = new MarkdownGenerator();
         this.indexGenerator = new BlogSiteIndexGenerator();
+        this.jekyllGenerator = new JekyllGenerator();
+        this.htmlGenerator = new HtmlGenerator();
     }
 
     public List<Path> generate(List<File> sourceDirs, File outputDir, String siteTitle, boolean generateIndex) throws IOException {
+        return generate(sourceDirs, outputDir, siteTitle, generateIndex, BlogFormat.GITHUB_PAGES.getValue(), "primer");
+    }
+
+    public List<Path> generate(List<File> sourceDirs, File outputDir, String siteTitle, boolean generateIndex, String formatStr) throws IOException {
+        return generate(sourceDirs, outputDir, siteTitle, generateIndex, formatStr, "primer");
+    }
+
+    public List<Path> generate(List<File> sourceDirs, File outputDir, String siteTitle, boolean generateIndex, String formatStr, String theme) throws IOException {
+        return generate(sourceDirs, outputDir, siteTitle, generateIndex, formatStr, theme, false);
+    }
+
+    public List<Path> generate(List<File> sourceDirs, File outputDir, String siteTitle, boolean generateIndex, String formatStr, String theme, boolean includeDrafts) throws IOException {
+        BlogFormat format = BlogFormat.fromString(formatStr);
+        String selectedTheme = (theme != null && !theme.isBlank()) ? theme : "primer";
         List<BlogPostModel> allPosts = new ArrayList<>();
 
         for (File dir : sourceDirs) {
@@ -41,18 +59,50 @@ public class BlogifyEngine {
 
         List<Path> writtenFiles = new ArrayList<>();
 
-        for (BlogPostModel post : allPosts) {
-            String markdown = markdownGenerator.generate(post);
-            Path targetFile = outputDir.toPath().resolve(post.getSlug() + ".md");
-            Files.writeString(targetFile, markdown, StandardCharsets.UTF_8);
-            writtenFiles.add(targetFile);
-        }
+        switch (format) {
+            case GITHUB_PAGES -> {
+                // Generate Jekyll structure for GitHub Pages
+                writtenFiles.addAll(jekyllGenerator.generate(outputDir, siteTitle, allPosts, includeDrafts));
 
-        if (generateIndex) {
-            String indexMarkdown = indexGenerator.generateIndex(siteTitle, allPosts);
-            Path indexFile = outputDir.toPath().resolve("index.md");
-            Files.writeString(indexFile, indexMarkdown, StandardCharsets.UTF_8);
-            writtenFiles.add(indexFile);
+                // Always generate an HTML preview folder inside outputDir/preview for zero-setup local visualization
+                File previewDir = new File(outputDir, "preview");
+                htmlGenerator.generate(previewDir, siteTitle, allPosts, selectedTheme, includeDrafts);
+
+                // Also generate AI discoverability files at output root
+                Path llmsFile = outputDir.toPath().resolve("llms.txt");
+                Files.copy(previewDir.toPath().resolve("llms.txt"), llmsFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                writtenFiles.add(llmsFile);
+
+                Path llmsFullFile = outputDir.toPath().resolve("llms-full.txt");
+                Files.copy(previewDir.toPath().resolve("llms-full.txt"), llmsFullFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                writtenFiles.add(llmsFullFile);
+
+                Path robotsFile = outputDir.toPath().resolve("robots.txt");
+                Files.copy(previewDir.toPath().resolve("robots.txt"), robotsFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                writtenFiles.add(robotsFile);
+            }
+            case HTML -> {
+                // Generate standalone static HTML, CSS, llms.txt directly into outputDir
+                writtenFiles.addAll(htmlGenerator.generate(outputDir, siteTitle, allPosts, selectedTheme, includeDrafts));
+            }
+            case MARKDOWN -> {
+                for (BlogPostModel post : allPosts) {
+                    String markdown = markdownGenerator.generate(post);
+                    Path targetFile = outputDir.toPath().resolve(post.getSlug() + ".md");
+                    Files.writeString(targetFile, markdown, StandardCharsets.UTF_8);
+                    writtenFiles.add(targetFile);
+                }
+
+                if (generateIndex) {
+                    String indexMarkdown = indexGenerator.generateIndex(siteTitle, allPosts);
+                    Path indexFile = outputDir.toPath().resolve("index.md");
+                    Files.writeString(indexFile, indexMarkdown, StandardCharsets.UTF_8);
+                    writtenFiles.add(indexFile);
+                }
+
+                File previewDir = new File(outputDir, "preview");
+                htmlGenerator.generate(previewDir, siteTitle, allPosts, selectedTheme);
+            }
         }
 
         return writtenFiles;
