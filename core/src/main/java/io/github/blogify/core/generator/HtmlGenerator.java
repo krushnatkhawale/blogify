@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -64,23 +65,66 @@ public class HtmlGenerator {
         Files.writeString(cssFile, buildCss(), StandardCharsets.UTF_8);
         writtenFiles.add(cssFile);
 
-        // 3. index.html
-        Path indexFile = outPath.resolve("index.html");
-        String indexHtml = buildIndexHtml(title, publishablePosts, theme);
-        Files.writeString(indexFile, indexHtml, StandardCharsets.UTF_8);
-        writtenFiles.add(indexFile);
-
-        // 4. <slug>.html for each post
+        BlogPostModel homePost = null;
         for (BlogPostModel post : publishablePosts) {
-            Path postFile = outPath.resolve(post.getSlug() + ".html");
-            String postHtml = buildPostHtml(title, post, theme);
-            Files.writeString(postFile, postHtml, StandardCharsets.UTF_8);
-            writtenFiles.add(postFile);
+            if (post.isHome() || "index".equalsIgnoreCase(post.getSlug())) {
+                homePost = post;
+                break;
+            }
+        }
+
+        boolean hasMultipleArticles = publishablePosts.size() > 1;
+
+        if (homePost != null) {
+            // 3. index.html renders the homePost
+            Path indexFile = outPath.resolve("index.html");
+            String indexHtml = buildPostHtml(title, homePost, theme, true, publishablePosts, hasMultipleArticles);
+            Files.writeString(indexFile, indexHtml, StandardCharsets.UTF_8);
+            writtenFiles.add(indexFile);
+
+            // If homePost has a slug other than "index", also write <slug>.html
+            if (!homePost.getSlug().isBlank() && !"index".equalsIgnoreCase(homePost.getSlug())) {
+                Path slugFile = outPath.resolve(homePost.getSlug() + ".html");
+                Files.writeString(slugFile, indexHtml, StandardCharsets.UTF_8);
+                writtenFiles.add(slugFile);
+            }
+
+            // 4. articles.html for catalog of all posts
+            if (hasMultipleArticles) {
+                Path articlesFile = outPath.resolve("articles.html");
+                String articlesHtml = buildIndexHtml(title, publishablePosts, theme, true);
+                Files.writeString(articlesFile, articlesHtml, StandardCharsets.UTF_8);
+                writtenFiles.add(articlesFile);
+            }
+
+            // 5. <slug>.html for remaining posts
+            for (BlogPostModel post : publishablePosts) {
+                if (post != homePost) {
+                    Path postFile = outPath.resolve(post.getSlug() + ".html");
+                    String postHtml = buildPostHtml(title, post, theme, false, publishablePosts, hasMultipleArticles);
+                    Files.writeString(postFile, postHtml, StandardCharsets.UTF_8);
+                    writtenFiles.add(postFile);
+                }
+            }
+        } else {
+            // 3. Standard catalog index.html
+            Path indexFile = outPath.resolve("index.html");
+            String indexHtml = buildIndexHtml(title, publishablePosts, theme, false);
+            Files.writeString(indexFile, indexHtml, StandardCharsets.UTF_8);
+            writtenFiles.add(indexFile);
+
+            // 4. <slug>.html for each post
+            for (BlogPostModel post : publishablePosts) {
+                Path postFile = outPath.resolve(post.getSlug() + ".html");
+                String postHtml = buildPostHtml(title, post, theme, false, publishablePosts, false);
+                Files.writeString(postFile, postHtml, StandardCharsets.UTF_8);
+                writtenFiles.add(postFile);
+            }
         }
 
         // 5. llms.txt
         Path llmsFile = outPath.resolve("llms.txt");
-        String llmsContent = buildLlmsTxt(title, publishablePosts);
+        String llmsContent = buildLlmsTxt(title, publishablePosts, homePost);
         Files.writeString(llmsFile, llmsContent, StandardCharsets.UTF_8);
         writtenFiles.add(llmsFile);
 
@@ -100,22 +144,30 @@ public class HtmlGenerator {
     }
 
     private String buildIndexHtml(String siteTitle, List<BlogPostModel> posts, String defaultTheme) {
+        return buildIndexHtml(siteTitle, posts, defaultTheme, false);
+    }
+
+    private String buildIndexHtml(String siteTitle, List<BlogPostModel> posts, String defaultTheme, boolean hasHomePage) {
         StringBuilder sb = new StringBuilder();
         sb.append("<!DOCTYPE html>\n<html lang=\"en\" data-theme=\"").append(escapeHtml(defaultTheme)).append("\" data-mode=\"light\">\n<head>\n");
         sb.append("  <meta charset=\"UTF-8\">\n");
         sb.append("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n");
-        sb.append("  <title>").append(escapeHtml(siteTitle)).append("</title>\n");
+        sb.append("  <title>").append(escapeHtml(siteTitle)).append(hasHomePage ? " - All Articles" : "").append("</title>\n");
         sb.append("  <link rel=\"stylesheet\" href=\"style.css\">\n");
         sb.append("  <link rel=\"alternate\" type=\"text/plain\" href=\"llms.txt\" title=\"LLM Knowledge Base\">\n");
         sb.append(buildThemeInitScript(defaultTheme));
         sb.append("</head>\n<body>\n");
 
-        sb.append(buildHeaderHtml(siteTitle, true));
+        sb.append(buildHeaderHtml(siteTitle, false, hasHomePage));
 
         sb.append("  <main>\n");
         sb.append("    <section class=\"hero\">\n");
-        sb.append("      <h1>").append(escapeHtml(siteTitle)).append("</h1>\n");
-        sb.append("      <p class=\"hero-subtitle\">Automated static technical blog generated directly from application source code and markdown bundles.</p>\n");
+        sb.append("      <h1>").append(escapeHtml(siteTitle)).append(hasHomePage ? " Articles" : "").append("</h1>\n");
+        if (hasHomePage) {
+            sb.append("      <p class=\"hero-subtitle\">Complete directory of technical articles and architecture specifications. <a href=\"index.html\">← Back to Home</a></p>\n");
+        } else {
+            sb.append("      <p class=\"hero-subtitle\">Automated static technical blog generated directly from application source code and markdown bundles.</p>\n");
+        }
         sb.append("      <div class=\"ai-badge-row\">\n");
         sb.append("        <a href=\"llms.txt\" class=\"ai-link-badge\" title=\"Formatted knowledge feed for AI agents and LLMs\">🤖 llms.txt</a>\n");
         sb.append("        <a href=\"llms-full.txt\" class=\"ai-link-badge\" title=\"Full corpus for LLM ingest\">📄 llms-full.txt</a>\n");
@@ -162,11 +214,14 @@ public class HtmlGenerator {
     }
 
     private void renderPostCard(StringBuilder sb, BlogPostModel post) {
+        String postHref = post.isHome() ? "index.html" : post.getSlug() + ".html";
         sb.append("    <div class=\"post-card").append(post.isRetired() ? " post-card-retired" : "").append("\">\n");
         sb.append("      <div class=\"post-card-header\">\n");
-        sb.append("        <h2 class=\"post-title\"><a href=\"").append(escapeHtml(post.getSlug())).append(".html\">");
+        sb.append("        <h2 class=\"post-title\"><a href=\"").append(escapeHtml(postHref)).append("\">");
         sb.append(escapeHtml(post.getTitle())).append("</a></h2>\n");
-        if (post.isRetired()) {
+        if (post.isHome()) {
+            sb.append("        <span class=\"badge-home\">MAIN</span>\n");
+        } else if (post.isRetired()) {
             sb.append("        <span class=\"badge-retired\">RETIRED</span>\n");
         }
         sb.append("      </div>\n");
@@ -205,6 +260,10 @@ public class HtmlGenerator {
     }
 
     private String buildPostHtml(String siteTitle, BlogPostModel post, String defaultTheme) {
+        return buildPostHtml(siteTitle, post, defaultTheme, false, Collections.emptyList(), false);
+    }
+
+    private String buildPostHtml(String siteTitle, BlogPostModel post, String defaultTheme, boolean isHomePage, List<BlogPostModel> allPosts, boolean hasMultipleArticles) {
         StringBuilder sb = new StringBuilder();
         sb.append("<!DOCTYPE html>\n<html lang=\"en\" data-theme=\"").append(escapeHtml(defaultTheme)).append("\" data-mode=\"light\">\n<head>\n");
         sb.append("  <meta charset=\"UTF-8\">\n");
@@ -222,10 +281,16 @@ public class HtmlGenerator {
 
         sb.append("</head>\n<body>\n");
 
-        sb.append(buildHeaderHtml(siteTitle, false));
+        sb.append(buildHeaderHtml(siteTitle, isHomePage, hasMultipleArticles));
 
         sb.append("  <article>\n");
-        sb.append("    <div class=\"breadcrumb\"><a href=\"index.html\">← All Articles</a></div>\n");
+        if (!isHomePage) {
+            if (hasMultipleArticles) {
+                sb.append("    <div class=\"breadcrumb\"><a href=\"index.html\">← Home</a> <span class=\"breadcrumb-sep\">/</span> <a href=\"articles.html\">All Articles</a></div>\n");
+            } else {
+                sb.append("    <div class=\"breadcrumb\"><a href=\"index.html\">← All Articles</a></div>\n");
+            }
+        }
 
         // Retired alert banner if post is retired
         if (post.isRetired()) {
@@ -344,12 +409,49 @@ public class HtmlGenerator {
             sb.append("    </div>\n\n");
         }
 
+        // If this is the home page and there are other articles, render a "More Articles" section
+        if (isHomePage && hasMultipleArticles) {
+            sb.append("    <section class=\"home-more-articles\">\n");
+            sb.append("      <div class=\"more-articles-header\">\n");
+            sb.append("        <h2>📚 More Architecture Guides & Articles</h2>\n");
+            sb.append("        <a href=\"articles.html\" class=\"view-all-link\">Browse all articles →</a>\n");
+            sb.append("      </div>\n");
+            sb.append("      <div class=\"more-articles-grid\">\n");
+            int count = 0;
+            for (BlogPostModel other : allPosts) {
+                if (other != post && count < 4) {
+                    renderMiniPostCard(sb, other);
+                    count++;
+                }
+            }
+            sb.append("      </div>\n");
+            sb.append("    </section>\n\n");
+        }
+
         sb.append("  </article>\n\n");
         sb.append(buildFooterHtml());
         sb.append(buildThemeSwitcherScript());
         sb.append("</body>\n</html>");
 
         return sb.toString();
+    }
+
+    private void renderMiniPostCard(StringBuilder sb, BlogPostModel post) {
+        String postHref = post.isHome() ? "index.html" : post.getSlug() + ".html";
+        sb.append("        <div class=\"mini-card").append(post.isRetired() ? " post-card-retired" : "").append("\">\n");
+        sb.append("          <h3><a href=\"").append(escapeHtml(postHref)).append("\">").append(escapeHtml(post.getTitle())).append("</a></h3>\n");
+        if (!post.getDescription().isBlank()) {
+            sb.append("          <p class=\"mini-card-desc\">").append(escapeHtml(post.getDescription())).append("</p>\n");
+        }
+        sb.append("          <div class=\"mini-card-meta\">");
+        if (!post.getDate().isBlank()) {
+            sb.append("<span>📅 ").append(escapeHtml(post.getDate())).append("</span>");
+        }
+        if (!post.getVersion().isBlank()) {
+            sb.append(" • <span>v").append(escapeHtml(post.getVersion())).append("</span>");
+        }
+        sb.append("</div>\n");
+        sb.append("        </div>\n");
     }
 
     private void appendHtmlCodeBlock(StringBuilder sb, BlogCodeBlockModel cb) {
@@ -373,6 +475,10 @@ public class HtmlGenerator {
     }
 
     private String buildHeaderHtml(String siteTitle, boolean isHome) {
+        return buildHeaderHtml(siteTitle, isHome, false);
+    }
+
+    private String buildHeaderHtml(String siteTitle, boolean isHome, boolean hasArticlesPage) {
         StringBuilder sb = new StringBuilder();
         sb.append("  <header>\n");
         sb.append("    <div class=\"header-container\">\n");
@@ -380,7 +486,14 @@ public class HtmlGenerator {
         sb.append(" <span class=\"badge-compile-time\">COMPILED</span></a>\n");
         sb.append("      <div class=\"header-actions\">\n");
         sb.append("        <nav class=\"nav-links\">\n");
-        if (!isHome) {
+        if (hasArticlesPage) {
+            if (isHome) {
+                sb.append("          <a href=\"articles.html\">📚 Articles</a>\n");
+            } else {
+                sb.append("          <a href=\"index.html\">← Home</a>\n");
+                sb.append("          <a href=\"articles.html\">Articles</a>\n");
+            }
+        } else if (!isHome) {
             sb.append("          <a href=\"index.html\">← Articles</a>\n");
         }
         sb.append("          <a href=\"llms.txt\" class=\"nav-ai-link\" title=\"AI Discoverability Feed\">AI llms.txt</a>\n");
@@ -465,13 +578,18 @@ public class HtmlGenerator {
     }
 
     private String buildLlmsTxt(String siteTitle, List<BlogPostModel> posts) {
+        return buildLlmsTxt(siteTitle, posts, null);
+    }
+
+    private String buildLlmsTxt(String siteTitle, List<BlogPostModel> posts, BlogPostModel homePost) {
         StringBuilder sb = new StringBuilder();
         sb.append("# ").append(siteTitle).append("\n\n");
         sb.append("> Curated technical articles and architecture specifications generated directly from codebase and documentation.\n\n");
         sb.append("## Available Guides\n\n");
 
         for (BlogPostModel post : posts) {
-            sb.append("- [").append(post.getTitle()).append("](").append(post.getSlug()).append(".html): ");
+            String href = (homePost != null && (post == homePost || post.isHome())) ? "index.html" : post.getSlug() + ".html";
+            sb.append("- [").append(post.getTitle()).append("](").append(href).append("): ");
             sb.append(post.getDescription().isBlank() ? post.getTitle() : post.getDescription());
             if (!post.getVersion().isBlank()) {
                 sb.append(" (Version: ").append(post.getVersion()).append(")");
@@ -990,6 +1108,15 @@ public class HtmlGenerator {
                   border-radius: 10px;
                   letter-spacing: 0.5px;
                 }
+                .badge-home {
+                  font-size: 0.7rem;
+                  font-weight: 700;
+                  background: #1f883d;
+                  color: #fff;
+                  padding: 0.15rem 0.5rem;
+                  border-radius: 10px;
+                  letter-spacing: 0.5px;
+                }
                 .post-title { font-size: 1.4rem; font-weight: 600; margin-bottom: 0.4rem; }
                 .post-title a { color: var(--text-primary); text-decoration: none; }
                 .post-title a:hover { color: var(--accent); }
@@ -1187,6 +1314,70 @@ public class HtmlGenerator {
                 html[data-mode="dark"] .hl-keyword { color: #ff7b72; }
                 html[data-mode="dark"] .hl-string { color: #a5d6ff; }
                 html[data-mode="dark"] .hl-annotation { color: #d2a8ff; }
+
+                /* Mini cards in homepage footer section */
+                .home-more-articles {
+                  margin-top: 3.5rem;
+                  padding-top: 2rem;
+                  border-top: 1px solid var(--border);
+                }
+                .more-articles-header {
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                  margin-bottom: 1.5rem;
+                }
+                .more-articles-header h2 {
+                  font-size: 1.35rem;
+                  margin: 0;
+                }
+                .view-all-link {
+                  font-size: 0.95rem;
+                  font-weight: 600;
+                  color: var(--accent);
+                  text-decoration: none;
+                }
+                .view-all-link:hover {
+                  text-decoration: underline;
+                }
+                .more-articles-grid {
+                  display: grid;
+                  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                  gap: 1.25rem;
+                }
+                .mini-card {
+                  background: var(--bg-card);
+                  border: 1px solid var(--border);
+                  border-radius: 8px;
+                  padding: 1.1rem 1.25rem;
+                  transition: transform 0.15s ease, box-shadow 0.15s ease;
+                }
+                .mini-card:hover {
+                  transform: translateY(-2px);
+                  box-shadow: var(--shadow);
+                }
+                .mini-card h3 {
+                  font-size: 1.05rem;
+                  margin: 0 0 0.5rem 0;
+                  font-weight: 600;
+                }
+                .mini-card h3 a {
+                  color: var(--text-primary);
+                  text-decoration: none;
+                }
+                .mini-card h3 a:hover {
+                  color: var(--accent);
+                }
+                .mini-card-desc {
+                  font-size: 0.88rem;
+                  color: var(--text-secondary);
+                  line-height: 1.4;
+                  margin: 0 0 0.6rem 0;
+                }
+                .mini-card-meta {
+                  font-size: 0.8rem;
+                  color: var(--text-secondary);
+                }
 
                 footer {
                   border-top: 1px solid var(--border);

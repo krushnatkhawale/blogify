@@ -32,6 +32,7 @@ public class BlogPostModel implements Comparable<BlogPostModel> {
     private String supersededBy = "";
     private String supersededMessage = "";
     private String rawBody = "";
+    private boolean home;
 
     public BlogPostModel(String title, String slug, String author, String date, String description, boolean draft, int order) {
         this.title = title != null ? title : "";
@@ -219,6 +220,14 @@ public class BlogPostModel implements Comparable<BlogPostModel> {
 
     public void setRawBody(String rawBody) {
         this.rawBody = rawBody != null ? rawBody : "";
+    }
+
+    public boolean isHome() {
+        return home;
+    }
+
+    public void setHome(boolean home) {
+        this.home = home;
     }
 
     @Override

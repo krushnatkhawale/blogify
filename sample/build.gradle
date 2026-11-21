@@ -4,7 +4,7 @@ plugins {
 }
 
 blogify {
-    siteTitle = 'Sample Engineering Blog'
+    siteTitle = 'Blogify'
     repoUrl = 'https://github.com/krushnatkhawale/blogify'
     theme = 'primer'
 }

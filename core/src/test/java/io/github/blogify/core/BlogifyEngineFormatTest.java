@@ -124,4 +124,63 @@ class BlogifyEngineFormatTest {
         String indexHtml = Files.readString(indexFile);
         assertTrue(indexHtml.contains("HTML Blog Post"));
     }
+
+    @Test
+    void testHtmlGenerationWithHomePost() throws IOException {
+        Path blogDir = tempDir.resolve("blogs/blogify");
+        Files.createDirectories(blogDir);
+
+        String postMd = """
+                ---
+                title: "Blogify Engine"
+                slug: "blogify"
+                home: true
+                author: "Core Team"
+                problem: "Documentation drift"
+                insight: "Compile-time generation"
+                takeaways:
+                  - "Zero runtime dependencies"
+                ---
+                
+                # Blogify Overview
+                The static blog engine.
+                """;
+        Files.writeString(blogDir.resolve("index.md"), postMd);
+
+        Path otherBlogDir = tempDir.resolve("blogs/other");
+        Files.createDirectories(otherBlogDir);
+        String otherMd = """
+                ---
+                title: "Other Guide"
+                slug: "other-guide"
+                ---
+                Other content
+                """;
+        Files.writeString(otherBlogDir.resolve("index.md"), otherMd);
+
+        Path outDir = tempDir.resolve("out_home");
+        BlogifyEngine engine = new BlogifyEngine();
+        engine.generate(Collections.singletonList(tempDir.resolve("blogs").toFile()), outDir.toFile(), "Blogify", true, "html");
+
+        Path indexFile = outDir.resolve("index.html");
+        Path slugFile = outDir.resolve("blogify.html");
+        Path articlesFile = outDir.resolve("articles.html");
+        Path otherFile = outDir.resolve("other-guide.html");
+
+        assertTrue(Files.exists(indexFile), "index.html should exist");
+        assertTrue(Files.exists(slugFile), "blogify.html should exist");
+        assertTrue(Files.exists(articlesFile), "articles.html should exist");
+        assertTrue(Files.exists(otherFile), "other-guide.html should exist");
+
+        String indexHtml = Files.readString(indexFile);
+        // index.html should contain the home article content directly
+        assertTrue(indexHtml.contains("Blogify Engine"), "index.html should contain title");
+        assertTrue(indexHtml.contains("Documentation drift"), "index.html should contain problem callout");
+        assertTrue(indexHtml.contains("Compile-time generation"), "index.html should contain insight callout");
+        assertTrue(indexHtml.contains("More Architecture Guides"), "index.html should have more guides section");
+
+        String articlesHtml = Files.readString(articlesFile);
+        assertTrue(articlesHtml.contains("Other Guide"), "articles.html should list other guide");
+        assertTrue(articlesHtml.contains("Blogify Articles"), "articles.html should have articles heading");
+    }
 }

@@ -1,6 +1,7 @@
 ---
-title: "Introducing Blogify: Story-First Static Blog Generator for Java & Gradle"
-slug: "introducing-blogify"
+title: "Blogify: Story-First Static Blog Generator for Java & Gradle"
+slug: "blogify"
+home: true
 author: "Krushnat Khawale"
 date: "2026-11-21"
 description: "How we eliminated runtime dependencies and documentation drift by compiling story-first technical blogs directly from code and markdown."

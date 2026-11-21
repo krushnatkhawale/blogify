@@ -16,8 +16,10 @@ import org.gradle.api.tasks.TaskAction;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 @CacheableTask
@@ -91,6 +93,10 @@ public abstract class GenerateBlogTask extends DefaultTask {
         getLogger().lifecycle("[Blogify] Scanning {} directory/directories for blog content (format: {}, theme: {})...",
                 scanDirs.size(), format, theme);
 
+        if (out.exists()) {
+            deleteRecursively(out.toPath());
+        }
+
         boolean includeDrafts = getIncludeDrafts().getOrElse(false);
 
         BlogifyEngine engine = new BlogifyEngine();
@@ -107,6 +113,18 @@ public abstract class GenerateBlogTask extends DefaultTask {
         getLogger().lifecycle("[Blogify] Generated {} blog artifact(s) into {}", generated.size(), out.getAbsolutePath());
         for (Path p : generated) {
             getLogger().info("[Blogify] - {}", p.getFileName());
+        }
+    }
+
+    private void deleteRecursively(Path path) {
+        try {
+            if (Files.exists(path)) {
+                Files.walk(path)
+                        .sorted(Comparator.reverseOrder())
+                        .map(Path::toFile)
+                        .forEach(File::delete);
+            }
+        } catch (Exception ignored) {
         }
     }
 }

@@ -72,8 +72,10 @@ public class MarkdownBlogParser {
         String description = getString(frontmatter, "description");
         boolean draft = getBoolean(frontmatter, "draft", false);
         int order = getInt(frontmatter, "order", 0);
+        boolean home = getBoolean(frontmatter, "home", false) || getBoolean(frontmatter, "isHome", false) || "index".equalsIgnoreCase(slug);
 
         BlogPostModel post = new BlogPostModel(title, slug, author, date, description, draft, order);
+        post.setHome(home);
 
         // Tags
         List<String> tags = getList(frontmatter, "tags");
