@@ -5,14 +5,3 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
-
-publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            pom {
-                name = 'Blogify Core'
-                description = 'Core AST parser, annotations, and Markdown generator for Blogify'
-            }
-        }
-    }
-}
