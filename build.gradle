@@ -93,3 +93,44 @@ subprojects {
         }
     }
 }
+
+tasks.register('createReleaseTag') {
+    group = 'release'
+    description = 'On-demand task to create and optionally push an annotated Git release tag (e.g. v0.1.0).'
+
+    doLast {
+        def tagName = project.findProperty('tag') ?: "v${project.version}"
+        def pushTag = project.hasProperty('push') || project.findProperty('pushTag') == 'true'
+
+        def runGit = { List<String> args ->
+            def fullCmd = ['git']
+            for (String arg : args) {
+                fullCmd.add(arg.toString())
+            }
+            def proc = fullCmd.execute((String[]) null, project.rootDir)
+            def out = proc.inputStream.text.trim()
+            def err = proc.errorStream.text.trim()
+            proc.waitFor()
+            if (proc.exitValue() != 0 && err) {
+                throw new GradleException("Git error: ${err}")
+            }
+            return out
+        }
+
+        def checkTag = runGit(['tag', '-l', tagName])
+
+        if (checkTag == tagName) {
+            println "⚡ Git tag '${tagName}' already exists locally."
+        } else {
+            runGit(['tag', '-a', tagName, '-m', "Release ${tagName}"])
+            println "✅ Created annotated Git release tag '${tagName}' locally."
+        }
+
+        if (pushTag) {
+            runGit(['push', 'origin', tagName])
+            println "🚀 Pushed tag '${tagName}' to origin."
+        } else {
+            println "ℹ️ To push this tag to remote, pass -Ppush (or run: git push origin ${tagName})."
+        }
+    }
+}

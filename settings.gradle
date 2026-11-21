@@ -10,4 +10,10 @@ rootProject.name = 'blogify'
 
 include 'core'
 include 'gradle-plugin'
-include 'sample'
+
+// The sample module demonstrates consuming the published plugin.
+// Conditionally include it if installed in local Maven, or in CI after local publication.
+def localPluginInstalled = new File(System.getProperty('user.home'), '.m2/repository/io/github/krushnatkhawale/blogify/gradle-plugin/0.1.0').exists()
+if (localPluginInstalled) {
+    include 'sample'
+}

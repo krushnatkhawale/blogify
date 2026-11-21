@@ -1,0 +1,45 @@
+name: Create Release Tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release tag to create (e.g. v0.1.0, leave blank for v<version>)'
+        required: false
+        default: ''
+      push_tag:
+        description: 'Push tag to remote'
+        type: boolean
+        default: true
+
+jobs:
+  tag:
+    name: Create Git Tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Git author
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create and push tag
+        run: |
+          TAG="${{ github.event.inputs.tag_name }}"
+          if [ -z "$TAG" ]; then
+            VERSION=$(grep -E "^version=" gradle.properties | cut -d'=' -f2 | tr -d ' ')
+            TAG="v${VERSION}"
+          fi
+          echo "Tagging release: $TAG"
+          git tag -a "$TAG" -m "Release $TAG"
+          if [ "${{ github.event.inputs.push_tag }}" = "true" ]; then
+            git push origin "$TAG"
+            echo "Successfully pushed tag $TAG to origin."
+          fi

@@ -25,5 +25,11 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Run Build
+      - name: Build and Test Plugin
         run: ./gradlew build --no-daemon
+
+      - name: Publish Plugin to Local Maven
+        run: ./gradlew :core:publishToMavenLocal :gradle-plugin:publishToMavenLocal --no-daemon
+
+      - name: Test Sample Blog Generation
+        run: ./gradlew :sample:generateBlog --no-daemon
