@@ -37,8 +37,8 @@ gradlePlugin {
         blogify {
             id = 'io.github.krushnatkhawale.blogify'
             displayName = 'Blogify Gradle Plugin'
-            description = 'Story-first static engineering blog generator from source code and Markdown bundles with on-demand GitHub Pages deployment'
-            tags.set(['blog', 'documentation', 'markdown', 'github-pages', 'static-site'])
+            description = 'Automates engineering blogging for Java and JVM developers: compiles source code, Javadoc, and Markdown bundles into modern static blogs with on-demand GitHub Pages deployment'
+            tags.set(['blog', 'documentation', 'markdown', 'github-pages', 'static-site', 'java', 'automation'])
             implementationClass = 'io.github.krushnatkhawale.blogify.gradle.BlogifyPlugin'
         }
     }

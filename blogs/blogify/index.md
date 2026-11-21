@@ -5,7 +5,7 @@ home: true
 author: "Krushnat Khawale"
 date: "2026-11-21"
 description: "How we eliminated runtime dependencies and documentation drift by compiling story-first technical blogs directly from code and markdown."
-tags: [gradle, static-site, documentation, open-source, architecture]
+tags: [java, blog-automation, gradle, static-site, gh-pages, documentation, open-source]
 version: "0.1.0"
 commit: "98ed70b"
 repoUrl: "https://github.com/krushnatkhawale/blogify"
@@ -22,21 +22,21 @@ insight: |
   An AI assistant can draft architecture articles from your real code, Blogify keeps snippets in sync with Git, and a single Gradle command compiles and publishes a responsive website to GitHub Pages.
 diagram: |
   flowchart TD
-    subgraph Sources["1. Architecture & Blog Sources"]
-      MD["blogs/<slug>/index.md<br/>(Markdown Leaf Bundles)"]
-      Java["Java Code & Javadoc<br/>(@blog.* annotations / tags)"]
+    subgraph Sources["1. Architecture and Blog Sources"]
+      MD["blogs/{slug}/index.md<br/>(Markdown Leaf Bundles)"]
+      Java["Java Code and Javadoc<br/>(@blog.* annotations / tags)"]
     end
 
     subgraph Plugin["2. Blogify Gradle Plugin (Zero Runtime)"]
-      Scanner["BlogSourceScanner<br/>(Extracts frontmatter, metadata & snippets)"]
+      Scanner["BlogSourceScanner<br/>(Extracts frontmatter, metadata and snippets)"]
       Engine["BlogifyEngine<br/>(Compiles HTML, CSS, llms.txt)"]
       Themes["Multi-Theme Styler<br/>(Primer · Editorial · Minimal)"]
     end
 
     subgraph Outputs["3. Developer Deliverables"]
-      Preview["./gradlew previewBlog<br/>(Instant Local Server :8080)"]
-      Publish["./gradlew publishBlog<br/>(Direct Git Push to gh-pages)"]
-      AI["AI Agent Feeds<br/>(llms.txt & llms-full.txt)"]
+      Preview["previewBlog task<br/>(Local Server on port 8080)"]
+      Publish["publishBlog task<br/>(Direct Git Push to gh-pages)"]
+      AI["AI Agent Feeds<br/>(llms.txt and llms-full.txt)"]
     end
 
     MD --> Scanner
@@ -107,22 +107,22 @@ sequenceDiagram
     participant Plugin as Blogify Plugin
     participant Scanner as Source Scanner
     participant Engine as Blogify Engine
-    participant Browser as Local Browser (:8080)
+    participant Browser as Local Browser (port 8080)
     participant GH as GitHub Pages (gh-pages)
 
     Dev->>Gradle: ./gradlew previewBlog
     Gradle->>Plugin: Invoke PreviewBlogTask
-    Plugin->>Scanner: Scan blogs/ bundles & @blog.* Javadoc
-    Scanner-->>Plugin: List<BlogPostModel>
-    Plugin->>Engine: Compile HTML, CSS, themes & llms.txt
+    Plugin->>Scanner: Scan blogs/ bundles and Javadoc tags
+    Scanner-->>Plugin: List of parsed BlogPostModel objects
+    Plugin->>Engine: Compile HTML, CSS, themes and llms.txt
     Engine-->>Plugin: Static artifacts in build/blog/preview
-    Plugin->>Browser: Start embedded HTTP daemon & open URL
-    Browser-->>Dev: Live site with theme toggling & dark mode
+    Plugin->>Browser: Start embedded HTTP daemon and open URL
+    Browser-->>Dev: Live site with theme toggling and dark mode
 
     Dev->>Gradle: ./gradlew publishBlog
     Gradle->>Plugin: Invoke PublishBlogTask
     Plugin->>GH: Push build/blog/preview directly to gh-pages branch
-    GH-->>Dev: 🚀 Live instantly at https://krushnatkhawale.github.io/blogify/
+    GH-->>Dev: Live site deployed to GitHub Pages
 ```
 
 ---

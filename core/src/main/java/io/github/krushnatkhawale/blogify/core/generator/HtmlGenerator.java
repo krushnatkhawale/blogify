@@ -365,7 +365,7 @@ public class HtmlGenerator {
         if (!post.getDiagram().isBlank()) {
             sb.append("    <div class=\"diagram-card\">\n");
             sb.append("      <div class=\"diagram-header\">📐 Architecture Workflow</div>\n");
-            sb.append("      <div class=\"mermaid\">\n").append(escapeHtml(post.getDiagram())).append("\n</div>\n");
+            sb.append("      <div class=\"mermaid\">\n").append(post.getDiagram().trim()).append("\n</div>\n");
             sb.append("    </div>\n\n");
         }
 
