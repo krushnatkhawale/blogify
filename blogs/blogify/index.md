@@ -11,12 +11,12 @@ commit: "98ed70b"
 repoUrl: "https://github.com/krushnatkhawale/blogify"
 status: "active"
 problem: |
-  Without a native, code-first static blogging tool in the Java/Gradle ecosystem, engineering teams face chronic friction:
-  - Documentation Drift: Technical articles and architectural guides written on external platforms (Medium, Confluence, Notion) detach from reality as the codebase evolves, quickly becoming obsolete.
-  - Foreign Toolchain Overhead: Traditional static site generators (Docusaurus, Astro, Hugo, Jekyll) force Java backend engineers to install and maintain Node.js, npm, Ruby, or Python toolchains in their repositories.
-  - Production Artifact Bloat: Teams trying to serve technical documentation or release notes from within their application often pull heavy web frameworks into production Spring Boot JARs/WARs.
-  - Fragile CI/CD Deployments: Automating blog publishing typically demands complex GitHub Actions workflows, external secret credentials, and fragile deployment pipelines.
-  - Machine Invisibility: Most blogs lack structured AI discoverability, leaving architectural reasoning and design patterns invisible or un-indexable to modern LLM tools.
+  Why your tech docs die in 30 days:
+  - 💀 The Wiki Graveyard: Notion and Confluence docs rot the moment you merge code.
+  - 📦 The 300MB Node.js Tax: Why install npm, Node, and 40k files in a pure Java repo?
+  - 🚨 Production JAR Bloat: Embedding docs engines into Spring Boot? Enjoy bloated 80MB JARs.
+  - 💥 CI/CD Token Hell: 70 lines of fragile GitHub Actions YAML just to publish HTML.
+  - 🤖 Invisible to AI: No llms.txt manifest = AI coding agents can't find your architecture.
 insight: |
   Blogify introduces a zero-runtime, compile-time Gradle static blog engine that lives right inside your build.
   It scans root blogs/ directory bundles and native Javadoc tags, generates responsive multi-theme HTML with Mermaid diagrams and immutable commit SHA badges, and publishes directly to GitHub Pages on demand with zero external dependencies.
@@ -55,15 +55,36 @@ takeaways:
 
 ## Why Another Blog Generator?
 
-In modern software engineering teams, technical blogging and architecture decision records often suffer from acute challenges when no dedicated, code-first tool exists:
+![Why Your Tech Docs Die](why-tech-docs-die.jpg)
 
-1. **The Wiki Drift Trap**: Articles written on external platforms (Medium, Substack, Confluence) describe an architecture on day one. By day thirty, the code has evolved, and the blog now teaches outdated patterns with zero automated verification.
-2. **The "JavaScript Tax" on Java Repositories**: Mainstream static site generators (Docusaurus, Gatsby, Next.js, Astro) require `package.json`, `node_modules`, npm lockfiles, and Node runtime in a backend Java repo. CI builds need Node setup steps, security scanners flag npm vulnerabilities, and backend developers must debug npm dependency conflicts just to publish docs.
-3. **Production Artifact Bloat**: Teams attempting to serve documentation directly from their applications often pull heavy markdown rendering libraries or web controllers into production Spring Boot JARs, swelling artifact size and expanding the attack surface.
-4. **Fragile CI/CD Pipelines**: Typical documentation hosting setups require complex GitHub Actions YAML workflows with personal access tokens (`PAT`), branch protection rules, and CI minute consumption.
-5. **The Missing AI Knowledge Layer**: When coding assistants (Cursor, Copilot, ChatGPT, Claude) inspect repositories, architectural context is scattered or inaccessible without a standardized machine-readable manifest like `llms.txt`.
+If you've ever tried maintaining engineering blogs or architecture decision records, you know the pain:
 
-Blogify was built to solve all of these issues with a single Gradle plugin application: **zero runtime dependencies, zero external toolchains, and 100% on-demand execution.**
+### 💀 1. The Wiki Graveyard
+> *"We wrote great docs on Notion 3 months ago... none of it works anymore."*
+
+Code moves at Git commit speed. External wikis don't compile, don't run tests, and don't fail builds. The moment your team refactors an API, your external wiki becomes a graveyard of outdated architecture.
+
+### 📦 2. The 300MB Node.js Tax
+> *"Why is our Java backend CI build failing on npm audit vulnerabilities?!"*
+
+Static site generators like Docusaurus, Astro, and Next.js are great—until you realize you just brought `package.json`, `node_modules`, and 40,000 JavaScript files into a clean Java Gradle repository. Why should a backend engineer debug npm lockfile conflicts just to write a blog post?
+
+### 🚨 3. Production JAR Bloat
+> *"Don't bundle your documentation viewer inside production Spring Boot."*
+
+Teams attempting to serve docs directly from microservices often bundle Swagger UI, heavy markdown rendering engines, or static controllers into production JARs—inflating container image sizes and needlessly expanding the attack surface.
+
+### 💥 4. CI/CD Token Hell
+> *"70 lines of GitHub Actions YAML and expiring PAT tokens just to push HTML?"*
+
+Automating static site hosting shouldn't require managing fragile workflow files, personal access tokens, and waiting 4 minutes for CI runners just to fix a typo. Publishing should be a single, on-demand task from your machine.
+
+### 🤖 5. Invisible to AI Agents
+> *"ChatGPT and Cursor couldn't find our core architecture patterns."*
+
+Modern developers code with Cursor, Copilot, and LLMs. If your documentation doesn't export a token-efficient `/llms.txt` and `/llms-full.txt`, AI agents can't index your system design and will hallucinate non-existent APIs.
+
+Blogify solves all five traps: **zero runtime dependencies, zero external toolchains, and 100% on-demand execution directly in Gradle.**
 
 ---
 

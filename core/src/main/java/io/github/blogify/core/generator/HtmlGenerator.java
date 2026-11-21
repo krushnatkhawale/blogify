@@ -766,6 +766,8 @@ public class HtmlGenerator {
 
     private String formatInlineMd(String text) {
         String escaped = escapeHtml(text);
+        // Images: ![alt](url)
+        escaped = escaped.replaceAll("!\\[([^\\]]*)\\]\\(([^\\)]+)\\)", "<div class=\"img-wrapper\"><img src=\"$2\" alt=\"$1\" class=\"md-img\"></div>");
         // Bold: **text**
         escaped = escaped.replaceAll("\\*\\*(.+?)\\*\\*", "<strong>$1</strong>");
         // Inline code: `code`
@@ -1287,6 +1289,14 @@ public class HtmlGenerator {
                 }
                 .md-ul { margin: 0.6rem 0 1rem 1.4rem; padding: 0; }
                 .md-li { margin-bottom: 0.35rem; line-height: 1.6; }
+                .img-wrapper { text-align: center; margin: 2rem 0; }
+                .md-img {
+                  max-width: 100%;
+                  height: auto;
+                  border-radius: 8px;
+                  border: 1px solid var(--border);
+                  box-shadow: var(--shadow);
+                }
 
                 /* Code wrapper and collapsible drawers */
                 .code-wrapper {

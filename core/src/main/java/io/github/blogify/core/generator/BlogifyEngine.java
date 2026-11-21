@@ -59,6 +59,16 @@ public class BlogifyEngine {
 
         List<Path> writtenFiles = new ArrayList<>();
 
+        // Copy static image assets from sourceDirs (e.g. leaf bundles in blogs/)
+        for (File dir : sourceDirs) {
+            if (dir != null && dir.exists()) {
+                writtenFiles.addAll(copyStaticAssets(dir.toPath(), outputDir.toPath()));
+                if (format == BlogFormat.GITHUB_PAGES) {
+                    writtenFiles.addAll(copyStaticAssets(dir.toPath(), new File(outputDir, "preview").toPath()));
+                }
+            }
+        }
+
         switch (format) {
             case GITHUB_PAGES -> {
                 // Generate Jekyll structure for GitHub Pages
@@ -106,5 +116,34 @@ public class BlogifyEngine {
         }
 
         return writtenFiles;
+    }
+
+    private List<Path> copyStaticAssets(Path sourceDir, Path targetDir) {
+        List<Path> copied = new ArrayList<>();
+        if (!Files.exists(sourceDir)) {
+            return copied;
+        }
+        try (var stream = Files.walk(sourceDir)) {
+            stream.filter(Files::isRegularFile)
+                  .filter(p -> isImageOrAsset(p.getFileName().toString()))
+                  .forEach(p -> {
+                      try {
+                          Files.createDirectories(targetDir);
+                          Path dest = targetDir.resolve(p.getFileName().toString());
+                          Files.copy(p, dest, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                          copied.add(dest);
+                      } catch (Exception ignored) {
+                      }
+                  });
+        } catch (Exception ignored) {
+        }
+        return copied;
+    }
+
+    private boolean isImageOrAsset(String filename) {
+        String lower = filename.toLowerCase();
+        return lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") ||
+                lower.endsWith(".svg") || lower.endsWith(".gif") || lower.endsWith(".webp") ||
+                lower.endsWith(".ico");
     }
 }
