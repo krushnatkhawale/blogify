@@ -349,7 +349,7 @@ public class HtmlGenerator {
         if (!post.getProblem().isBlank()) {
             sb.append("    <div class=\"callout callout-problem\">\n");
             sb.append("      <div class=\"callout-header\">⚠️ The Problem</div>\n");
-            sb.append("      <div class=\"callout-body\">").append(escapeHtml(post.getProblem()).replace("\n", "<br>\n      ")).append("</div>\n");
+            sb.append("      <div class=\"callout-body\">\n").append(renderCalloutBody(post.getProblem())).append("      </div>\n");
             sb.append("    </div>\n\n");
         }
 
@@ -357,7 +357,7 @@ public class HtmlGenerator {
         if (!post.getInsight().isBlank()) {
             sb.append("    <div class=\"callout callout-insight\">\n");
             sb.append("      <div class=\"callout-header\">💡 The Core Insight</div>\n");
-            sb.append("      <div class=\"callout-body\">").append(escapeHtml(post.getInsight()).replace("\n", "<br>\n      ")).append("</div>\n");
+            sb.append("      <div class=\"callout-body\">\n").append(renderCalloutBody(post.getInsight())).append("      </div>\n");
             sb.append("    </div>\n\n");
         }
 
@@ -694,8 +694,14 @@ public class HtmlGenerator {
         String codeLang = "";
         StringBuilder codeContent = new StringBuilder();
 
+        boolean inList = false;
+
         for (String line : lines) {
             if (line.startsWith("```")) {
+                if (inList) {
+                    sb.append("    </ul>\n");
+                    inList = false;
+                }
                 if (!inCode) {
                     inCode = true;
                     codeLang = line.substring(3).trim();
@@ -723,22 +729,36 @@ public class HtmlGenerator {
                 continue;
             }
 
-            // Headings
-            if (line.startsWith("### ")) {
-                sb.append("    <h3>").append(formatInlineMd(line.substring(4))).append("</h3>\n");
-            } else if (line.startsWith("## ")) {
-                sb.append("    <h2>").append(formatInlineMd(line.substring(3))).append("</h2>\n");
-            } else if (line.startsWith("# ")) {
-                sb.append("    <h1>").append(formatInlineMd(line.substring(2))).append("</h1>\n");
-            } else if (line.startsWith("- ") || line.startsWith("* ")) {
-                sb.append("    <li class=\"md-li\">").append(formatInlineMd(line.substring(2))).append("</li>\n");
-            } else if (line.startsWith("> ")) {
-                sb.append("    <blockquote class=\"md-quote\">").append(formatInlineMd(line.substring(2))).append("</blockquote>\n");
-            } else if (line.isBlank()) {
-                sb.append("\n");
+            // Headings and block formatting
+            if (line.startsWith("- ") || line.startsWith("* ")) {
+                if (!inList) {
+                    sb.append("    <ul class=\"md-ul\">\n");
+                    inList = true;
+                }
+                sb.append("      <li class=\"md-li\">").append(formatInlineMd(line.substring(2))).append("</li>\n");
             } else {
-                sb.append("    <p>").append(formatInlineMd(line)).append("</p>\n");
+                if (inList) {
+                    sb.append("    </ul>\n");
+                    inList = false;
+                }
+                if (line.startsWith("### ")) {
+                    sb.append("    <h3>").append(formatInlineMd(line.substring(4))).append("</h3>\n");
+                } else if (line.startsWith("## ")) {
+                    sb.append("    <h2>").append(formatInlineMd(line.substring(3))).append("</h2>\n");
+                } else if (line.startsWith("# ")) {
+                    sb.append("    <h1>").append(formatInlineMd(line.substring(2))).append("</h1>\n");
+                } else if (line.startsWith("> ")) {
+                    sb.append("    <blockquote class=\"md-quote\">").append(formatInlineMd(line.substring(2))).append("</blockquote>\n");
+                } else if (line.isBlank()) {
+                    sb.append("\n");
+                } else {
+                    sb.append("    <p>").append(formatInlineMd(line)).append("</p>\n");
+                }
             }
+        }
+
+        if (inList) {
+            sb.append("    </ul>\n");
         }
 
         return sb.toString();
@@ -1197,6 +1217,11 @@ public class HtmlGenerator {
                   gap: 0.4rem;
                 }
                 .callout-body { font-size: 1.02rem; line-height: 1.65; }
+                .callout-body p { margin: 0 0 0.6rem 0; }
+                .callout-body p:last-child { margin-bottom: 0; }
+                .callout-body ul { margin: 0.5rem 0 0.5rem 1.4rem; padding: 0; }
+                .callout-body li { margin-bottom: 0.4rem; }
+                .callout-body li:last-child { margin-bottom: 0; }
                 .callout-problem {
                   background: var(--callout-problem-bg);
                   border-left-color: var(--callout-problem-border);
@@ -1260,6 +1285,8 @@ public class HtmlGenerator {
                   font-style: italic;
                   margin: 1.2rem 0;
                 }
+                .md-ul { margin: 0.6rem 0 1rem 1.4rem; padding: 0; }
+                .md-li { margin-bottom: 0.35rem; line-height: 1.6; }
 
                 /* Code wrapper and collapsible drawers */
                 .code-wrapper {
@@ -1391,6 +1418,39 @@ public class HtmlGenerator {
                 .footer-ai-note { margin-top: 0.5rem; font-size: 0.8rem; }
                 .footer-ai-note a { color: var(--accent); text-decoration: none; }
                 """;
+    }
+
+    private String renderCalloutBody(String text) {
+        if (text == null || text.isBlank()) {
+            return "";
+        }
+        String[] lines = text.split("\r?\n");
+        StringBuilder sb = new StringBuilder();
+        boolean inList = false;
+
+        for (String line : lines) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+            if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+                if (!inList) {
+                    sb.append("        <ul>\n");
+                    inList = true;
+                }
+                sb.append("          <li>").append(escapeHtml(trimmed.substring(2).trim())).append("</li>\n");
+            } else {
+                if (inList) {
+                    sb.append("        </ul>\n");
+                    inList = false;
+                }
+                sb.append("        <p>").append(escapeHtml(trimmed)).append("</p>\n");
+            }
+        }
+        if (inList) {
+            sb.append("        </ul>\n");
+        }
+        return sb.toString();
     }
 
     private String escapeHtml(String text) {
