@@ -116,21 +116,14 @@ public abstract class GenerateBlogTask extends DefaultTask {
         }
 
         boolean includeDrafts = getIncludeDrafts().getOrElse(false);
-
-        String blogHome = null;
-        Object propBlogHome = getProject().findProperty("blogHome");
-        if (propBlogHome != null && !propBlogHome.toString().isBlank()) {
-            blogHome = propBlogHome.toString();
-        } else {
-            blogHome = getBlogHome().getOrNull();
+        String blogHome = getBlogHome().getOrNull();
+        if (blogHome != null && blogHome.isBlank()) {
+            blogHome = null;
         }
 
-        String siteUrl = null;
-        Object propSiteUrl = getProject().findProperty("siteUrl");
-        if (propSiteUrl != null && !propSiteUrl.toString().isBlank()) {
-            siteUrl = propSiteUrl.toString();
-        } else {
-            siteUrl = getSiteUrl().getOrNull();
+        String siteUrl = getSiteUrl().getOrNull();
+        if (siteUrl != null && siteUrl.isBlank()) {
+            siteUrl = null;
         }
 
         BlogifyEngine engine = new BlogifyEngine();

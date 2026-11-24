@@ -158,4 +158,48 @@ class BlogifyPluginFunctionalTest {
         assertTrue(Files.exists(indexFile), "index.html should exist");
         assertTrue(Files.exists(postFile), "static-html-article.html should exist");
     }
+
+    @Test
+    void testGenerateBlogWithConfiguredBlogHome(@TempDir Path blogHomeProjectDir) throws IOException {
+        Files.writeString(blogHomeProjectDir.resolve("settings.gradle"), "rootProject.name = 'bloghome-app'");
+
+        String buildScript = """
+                plugins {
+                    id 'java'
+                    id 'io.github.krushnatkhawale.blogify'
+                }
+
+                blogify {
+                    siteTitle = 'Configured Blog'
+                    blogHome = 'https://krushnatkhawale.github.io/#/blogs'
+                }
+                """;
+        Files.writeString(blogHomeProjectDir.resolve("build.gradle"), buildScript);
+
+        Path blogsDir = blogHomeProjectDir.resolve("blogs/my-post");
+        Files.createDirectories(blogsDir);
+        String md = """
+                ---
+                title: "My Configured Post"
+                slug: "my-post"
+                home: true
+                ---
+                # Content
+                """;
+        Files.writeString(blogsDir.resolve("index.md"), md);
+
+        BuildResult result = GradleRunner.create()
+                .withProjectDir(blogHomeProjectDir.toFile())
+                .withPluginClasspath()
+                .withArguments("generateBlog", "--stacktrace")
+                .build();
+
+        Path previewIndex = blogHomeProjectDir.resolve("build/blog/preview/index.html");
+        assertTrue(Files.exists(previewIndex), "preview/index.html should exist");
+
+        String previewHtml = Files.readString(previewIndex);
+        assertTrue(previewHtml.contains("href=\"https://krushnatkhawale.github.io/#/blogs\""),
+                "preview HTML should contain configured blogHome URL");
+        assertTrue(previewHtml.contains("← Back to Blogs"), "should have back to blogs link");
+    }
 }

@@ -47,19 +47,8 @@ public class BlogifyPlugin implements Plugin<Project> {
         extension.getPublishBranch().convention("gh-pages");
         extension.getPublishRemote().convention("origin");
 
-        Object cliBlogHome = project.findProperty("blogHome");
-        if (cliBlogHome != null && !cliBlogHome.toString().isBlank()) {
-            extension.getBlogHome().convention(cliBlogHome.toString());
-        } else {
-            extension.getBlogHome().convention("");
-        }
-
-        Object cliSiteUrl = project.findProperty("siteUrl");
-        if (cliSiteUrl != null && !cliSiteUrl.toString().isBlank()) {
-            extension.getSiteUrl().convention(cliSiteUrl.toString());
-        } else {
-            extension.getSiteUrl().convention("");
-        }
+        extension.getBlogHome().convention("");
+        extension.getSiteUrl().convention("");
 
         TaskProvider<GenerateBlogTask> generateTaskProvider = project.getTasks().register(TASK_NAME, GenerateBlogTask.class, task -> {
             task.setGroup("documentation");
