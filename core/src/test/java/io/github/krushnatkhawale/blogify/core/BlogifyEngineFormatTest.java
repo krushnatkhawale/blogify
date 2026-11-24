@@ -287,7 +287,7 @@ class BlogifyEngineFormatTest {
         assertFalse(htmlOptOut.contains("googletagmanager.com"), "GA4 script should not be present when not configured");
         assertFalse(htmlOptOut.contains("gtag("), "gtag should not be present when not configured");
         assertFalse(htmlOptOut.contains("blogify-views-badge"), "Visitor counter badge should not be present when disabled");
-        assertFalse(htmlOptOut.contains("api.counterapi.dev"), "CounterAPI script should not be present when disabled");
+        assertFalse(htmlOptOut.contains("countapi.mileshilliard.com"), "Counter script should not be present when disabled");
 
         // 2. Test opt-in behavior: GA4 enabled and visitor counter enabled
         Path outDirOptIn = tempDir.resolve("out_analytics_optin");
@@ -299,7 +299,7 @@ class BlogifyEngineFormatTest {
         assertTrue(htmlOptIn.contains("https://www.googletagmanager.com/gtag/js?id=G-5BJKLL1EXD"), "GA4 script should be loaded");
         assertTrue(htmlOptIn.contains("gtag('config', 'G-5BJKLL1EXD')"), "GA4 gtag config should be initialized");
         assertTrue(htmlOptIn.contains("id=\"blogify-views-badge\""), "Visitor counter badge should be rendered");
-        assertTrue(htmlOptIn.contains("https://api.counterapi.dev/v1/"), "CounterAPI fetch should be injected");
+        assertTrue(htmlOptIn.contains("https://countapi.mileshilliard.com/api/v1/"), "CountAPI fetch should be injected");
         assertTrue(htmlOptIn.contains("var ns = \"krushnatkhawale-blogify\""), "Counter namespace should be derived from repoUrl");
     }
 }
