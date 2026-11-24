@@ -1876,7 +1876,10 @@ public class HtmlGenerator {
                 + "    window.dataLayer = window.dataLayer || [];\n"
                 + "    function gtag(){dataLayer.push(arguments);}\n"
                 + "    gtag('js', new Date());\n"
-                + "    gtag('config', '" + cleanId + "');\n"
+                + "    gtag('config', '" + cleanId + "', {\n"
+                + "      page_path: window.location.pathname,\n"
+                + "      page_title: document.title\n"
+                + "    });\n"
                 + "  </script>\n";
     }
 

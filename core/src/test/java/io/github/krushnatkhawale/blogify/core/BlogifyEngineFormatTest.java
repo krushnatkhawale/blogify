@@ -297,7 +297,9 @@ class BlogifyEngineFormatTest {
         Path indexOptInFile = outDirOptIn.resolve("index.html");
         String htmlOptIn = Files.readString(indexOptInFile);
         assertTrue(htmlOptIn.contains("https://www.googletagmanager.com/gtag/js?id=G-5BJKLL1EXD"), "GA4 script should be loaded");
-        assertTrue(htmlOptIn.contains("gtag('config', 'G-5BJKLL1EXD')"), "GA4 gtag config should be initialized");
+        assertTrue(htmlOptIn.contains("gtag('config', 'G-5BJKLL1EXD', {"), "GA4 gtag config should be initialized with options");
+        assertTrue(htmlOptIn.contains("page_path: window.location.pathname"), "GA4 should track page_path");
+        assertTrue(htmlOptIn.contains("page_title: document.title"), "GA4 should track page_title");
         assertTrue(htmlOptIn.contains("id=\"blogify-views-badge\""), "Visitor counter badge should be rendered");
         assertTrue(htmlOptIn.contains("https://countapi.mileshilliard.com/api/v1/"), "CountAPI fetch should be injected");
         assertTrue(htmlOptIn.contains("var ns = \"krushnatkhawale-blogify\""), "Counter namespace should be derived from repoUrl");
