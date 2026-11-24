@@ -7,4 +7,5 @@ blogify {
     siteTitle = 'Blogify'
     repoUrl = 'https://github.com/krushnatkhawale/blogify'
     theme = 'primer'
+    blogHome = 'https://krushnatkhawale.github.io/#/blogs'
 }

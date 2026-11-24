@@ -85,4 +85,16 @@ public abstract class BlogifyExtension {
      * Defaults to 'Deploy blog [commit {short-sha}] [skip ci]'.
      */
     public abstract Property<String> getPublishMessage();
+
+    /**
+     * External URL to the blogs home (e.g. portfolio blogs page 'http://localhost:3000/#/blogs' or 'https://krushnatkhawale.github.io/#/blogs').
+     * When configured, the top navigation replaces 'Home' and 'Articles' with a single '← Back to Blogs' link.
+     */
+    public abstract Property<String> getBlogHome();
+
+    /**
+     * Public canonical URL where this blog is hosted (e.g. 'https://krushnatkhawale.github.io/blogify/').
+     * Used when generating portfolio cards in blogs.json. If omitted, automatically derived from repoUrl or git remote.
+     */
+    public abstract Property<String> getSiteUrl();
 }

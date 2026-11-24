@@ -31,15 +31,25 @@ import java.util.regex.Pattern;
  */
 public class HtmlGenerator {
 
+    private String lastGeneratedPortfolioJson = "";
+
+    public String getLastGeneratedPortfolioJson() {
+        return lastGeneratedPortfolioJson;
+    }
+
     public List<Path> generate(File outputDir, String siteTitle, List<BlogPostModel> posts) throws IOException {
-        return generate(outputDir, siteTitle, posts, "primer", false);
+        return generate(outputDir, siteTitle, posts, "primer", false, null, null);
     }
 
     public List<Path> generate(File outputDir, String siteTitle, List<BlogPostModel> posts, String defaultTheme) throws IOException {
-        return generate(outputDir, siteTitle, posts, defaultTheme, false);
+        return generate(outputDir, siteTitle, posts, defaultTheme, false, null, null);
     }
 
     public List<Path> generate(File outputDir, String siteTitle, List<BlogPostModel> posts, String defaultTheme, boolean includeDrafts) throws IOException {
+        return generate(outputDir, siteTitle, posts, defaultTheme, includeDrafts, null, null);
+    }
+
+    public List<Path> generate(File outputDir, String siteTitle, List<BlogPostModel> posts, String defaultTheme, boolean includeDrafts, String blogHome, String siteUrl) throws IOException {
         List<Path> writtenFiles = new ArrayList<>();
 
         Path outPath = outputDir.toPath();
@@ -78,7 +88,7 @@ public class HtmlGenerator {
         if (homePost != null) {
             // 3. index.html renders the homePost
             Path indexFile = outPath.resolve("index.html");
-            String indexHtml = buildPostHtml(title, homePost, theme, true, publishablePosts, hasMultipleArticles);
+            String indexHtml = buildPostHtml(title, homePost, theme, true, publishablePosts, hasMultipleArticles, blogHome);
             Files.writeString(indexFile, indexHtml, StandardCharsets.UTF_8);
             writtenFiles.add(indexFile);
 
@@ -92,7 +102,7 @@ public class HtmlGenerator {
             // 4. articles.html for catalog of all posts
             if (hasMultipleArticles) {
                 Path articlesFile = outPath.resolve("articles.html");
-                String articlesHtml = buildIndexHtml(title, publishablePosts, theme, true);
+                String articlesHtml = buildIndexHtml(title, publishablePosts, theme, true, blogHome);
                 Files.writeString(articlesFile, articlesHtml, StandardCharsets.UTF_8);
                 writtenFiles.add(articlesFile);
             }
@@ -101,7 +111,7 @@ public class HtmlGenerator {
             for (BlogPostModel post : publishablePosts) {
                 if (post != homePost) {
                     Path postFile = outPath.resolve(post.getSlug() + ".html");
-                    String postHtml = buildPostHtml(title, post, theme, false, publishablePosts, hasMultipleArticles);
+                    String postHtml = buildPostHtml(title, post, theme, false, publishablePosts, hasMultipleArticles, blogHome);
                     Files.writeString(postFile, postHtml, StandardCharsets.UTF_8);
                     writtenFiles.add(postFile);
                 }
@@ -109,14 +119,14 @@ public class HtmlGenerator {
         } else {
             // 3. Standard catalog index.html
             Path indexFile = outPath.resolve("index.html");
-            String indexHtml = buildIndexHtml(title, publishablePosts, theme, false);
+            String indexHtml = buildIndexHtml(title, publishablePosts, theme, false, blogHome);
             Files.writeString(indexFile, indexHtml, StandardCharsets.UTF_8);
             writtenFiles.add(indexFile);
 
             // 4. <slug>.html for each post
             for (BlogPostModel post : publishablePosts) {
                 Path postFile = outPath.resolve(post.getSlug() + ".html");
-                String postHtml = buildPostHtml(title, post, theme, false, publishablePosts, false);
+                String postHtml = buildPostHtml(title, post, theme, false, publishablePosts, false, blogHome);
                 Files.writeString(postFile, postHtml, StandardCharsets.UTF_8);
                 writtenFiles.add(postFile);
             }
@@ -140,14 +150,24 @@ public class HtmlGenerator {
         Files.writeString(robotsFile, robotsContent, StandardCharsets.UTF_8);
         writtenFiles.add(robotsFile);
 
+        // 8. blogs.json (Portfolio cards feed)
+        Path blogsJsonFile = outPath.resolve("blogs.json");
+        this.lastGeneratedPortfolioJson = buildPortfolioBlogsJson(publishablePosts, siteUrl, homePost);
+        Files.writeString(blogsJsonFile, this.lastGeneratedPortfolioJson, StandardCharsets.UTF_8);
+        writtenFiles.add(blogsJsonFile);
+
         return writtenFiles;
     }
 
     private String buildIndexHtml(String siteTitle, List<BlogPostModel> posts, String defaultTheme) {
-        return buildIndexHtml(siteTitle, posts, defaultTheme, false);
+        return buildIndexHtml(siteTitle, posts, defaultTheme, false, null);
     }
 
     private String buildIndexHtml(String siteTitle, List<BlogPostModel> posts, String defaultTheme, boolean hasHomePage) {
+        return buildIndexHtml(siteTitle, posts, defaultTheme, hasHomePage, null);
+    }
+
+    private String buildIndexHtml(String siteTitle, List<BlogPostModel> posts, String defaultTheme, boolean hasHomePage, String blogHome) {
         StringBuilder sb = new StringBuilder();
         sb.append("<!DOCTYPE html>\n<html lang=\"en\" data-theme=\"").append(escapeHtml(defaultTheme)).append("\" data-mode=\"light\">\n<head>\n");
         sb.append("  <meta charset=\"UTF-8\">\n");
@@ -158,13 +178,15 @@ public class HtmlGenerator {
         sb.append(buildThemeInitScript(defaultTheme));
         sb.append("</head>\n<body>\n");
 
-        sb.append(buildHeaderHtml(siteTitle, false, hasHomePage));
+        sb.append(buildHeaderHtml(siteTitle, false, hasHomePage, blogHome));
 
         sb.append("  <main>\n");
         sb.append("    <section class=\"hero\">\n");
         sb.append("      <h1>").append(escapeHtml(siteTitle)).append(hasHomePage ? " Articles" : "").append("</h1>\n");
         if (hasHomePage) {
-            sb.append("      <p class=\"hero-subtitle\">Complete directory of technical articles and architecture specifications. <a href=\"index.html\">← Back to Home</a></p>\n");
+            String backHref = (blogHome != null && !blogHome.isBlank()) ? blogHome : "index.html";
+            String backText = (blogHome != null && !blogHome.isBlank()) ? "← Back to Blogs" : "← Back to Home";
+            sb.append("      <p class=\"hero-subtitle\">Complete directory of technical articles and architecture specifications. <a href=\"").append(escapeHtml(backHref)).append("\">").append(escapeHtml(backText)).append("</a></p>\n");
         } else {
             sb.append("      <p class=\"hero-subtitle\">Automated static technical blog generated directly from application source code and markdown bundles.</p>\n");
         }
@@ -260,10 +282,14 @@ public class HtmlGenerator {
     }
 
     private String buildPostHtml(String siteTitle, BlogPostModel post, String defaultTheme) {
-        return buildPostHtml(siteTitle, post, defaultTheme, false, Collections.emptyList(), false);
+        return buildPostHtml(siteTitle, post, defaultTheme, false, Collections.emptyList(), false, null);
     }
 
     private String buildPostHtml(String siteTitle, BlogPostModel post, String defaultTheme, boolean isHomePage, List<BlogPostModel> allPosts, boolean hasMultipleArticles) {
+        return buildPostHtml(siteTitle, post, defaultTheme, isHomePage, allPosts, hasMultipleArticles, null);
+    }
+
+    private String buildPostHtml(String siteTitle, BlogPostModel post, String defaultTheme, boolean isHomePage, List<BlogPostModel> allPosts, boolean hasMultipleArticles, String blogHome) {
         StringBuilder sb = new StringBuilder();
         sb.append("<!DOCTYPE html>\n<html lang=\"en\" data-theme=\"").append(escapeHtml(defaultTheme)).append("\" data-mode=\"light\">\n<head>\n");
         sb.append("  <meta charset=\"UTF-8\">\n");
@@ -281,11 +307,13 @@ public class HtmlGenerator {
 
         sb.append("</head>\n<body>\n");
 
-        sb.append(buildHeaderHtml(siteTitle, isHomePage, hasMultipleArticles));
+        sb.append(buildHeaderHtml(siteTitle, isHomePage, hasMultipleArticles, blogHome));
 
         sb.append("  <article>\n");
         if (!isHomePage) {
-            if (hasMultipleArticles) {
+            if (blogHome != null && !blogHome.isBlank()) {
+                sb.append("    <div class=\"breadcrumb\"><a href=\"").append(escapeHtml(blogHome)).append("\">← Back to Blogs</a></div>\n");
+            } else if (hasMultipleArticles) {
                 sb.append("    <div class=\"breadcrumb\"><a href=\"index.html\">← Home</a> <span class=\"breadcrumb-sep\">/</span> <a href=\"articles.html\">All Articles</a></div>\n");
             } else {
                 sb.append("    <div class=\"breadcrumb\"><a href=\"index.html\">← All Articles</a></div>\n");
@@ -475,18 +503,25 @@ public class HtmlGenerator {
     }
 
     private String buildHeaderHtml(String siteTitle, boolean isHome) {
-        return buildHeaderHtml(siteTitle, isHome, false);
+        return buildHeaderHtml(siteTitle, isHome, false, null);
     }
 
     private String buildHeaderHtml(String siteTitle, boolean isHome, boolean hasArticlesPage) {
+        return buildHeaderHtml(siteTitle, isHome, hasArticlesPage, null);
+    }
+
+    private String buildHeaderHtml(String siteTitle, boolean isHome, boolean hasArticlesPage, String blogHome) {
         StringBuilder sb = new StringBuilder();
         sb.append("  <header>\n");
         sb.append("    <div class=\"header-container\">\n");
-        sb.append("      <a href=\"index.html\" class=\"brand-title\">⚡ ").append(escapeHtml(siteTitle));
+        String brandHref = (blogHome != null && !blogHome.isBlank()) ? blogHome : "index.html";
+        sb.append("      <a href=\"").append(escapeHtml(brandHref)).append("\" class=\"brand-title\">⚡ ").append(escapeHtml(siteTitle));
         sb.append(" <span class=\"badge-compile-time\">COMPILED</span></a>\n");
         sb.append("      <div class=\"header-actions\">\n");
         sb.append("        <nav class=\"nav-links\">\n");
-        if (hasArticlesPage) {
+        if (blogHome != null && !blogHome.isBlank()) {
+            sb.append("          <a href=\"").append(escapeHtml(blogHome)).append("\">← Back to Blogs</a>\n");
+        } else if (hasArticlesPage) {
             if (isHome) {
                 sb.append("          <a href=\"articles.html\">📚 Articles</a>\n");
             } else {
@@ -1723,6 +1758,65 @@ public class HtmlGenerator {
                 .replace("'", "&#39;");
     }
 
+    public String buildPortfolioBlogsJson(List<BlogPostModel> posts, String siteUrl, BlogPostModel homePost) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("[\n");
+        for (int i = 0; i < posts.size(); i++) {
+            BlogPostModel p = posts.get(i);
+            sb.append("  {\n");
+            sb.append("    \"id\": ").append(escapeJsonString(p.getSlug())).append(",\n");
+            sb.append("    \"title\": ").append(escapeJsonString(p.getTitle())).append(",\n");
+            sb.append("    \"description\": ").append(escapeJsonString(p.getDescription())).append(",\n");
+            sb.append("    \"date\": ").append(escapeJsonString(p.getDate())).append(",\n");
+            sb.append("    \"category\": ").append(escapeJsonString(p.getCategory())).append(",\n");
+            sb.append("    \"link\": ").append(escapeJsonString(resolvePublicPostUrl(p, siteUrl, homePost))).append(",\n");
+            sb.append("    \"tags\": [");
+            List<String> tags = new ArrayList<>(p.getTags());
+            for (int t = 0; t < tags.size(); t++) {
+                sb.append(escapeJsonString(tags.get(t)));
+                if (t < tags.size() - 1) {
+                    sb.append(", ");
+                }
+            }
+            sb.append("]\n");
+            sb.append("  }");
+            if (i < posts.size() - 1) {
+                sb.append(",");
+            }
+            sb.append("\n");
+        }
+        sb.append("]\n");
+        return sb.toString();
+    }
+
+    public static String resolvePublicPostUrl(BlogPostModel post, String siteUrl, BlogPostModel homePost) {
+        String base = siteUrl;
+        if (base == null || base.isBlank()) {
+            String repo = post.getRepoUrl();
+            if (repo != null && repo.contains("github.com/")) {
+                String path = repo.substring(repo.indexOf("github.com/") + "github.com/".length());
+                if (path.endsWith(".git")) {
+                    path = path.substring(0, path.length() - 4);
+                }
+                String[] parts = path.split("/");
+                if (parts.length >= 2) {
+                    base = "https://" + parts[0].toLowerCase() + ".github.io/" + parts[1];
+                }
+            }
+        }
+        if (base == null || base.isBlank()) {
+            base = "https://krushnatkhawale.github.io/blogify";
+        }
+        if (base.endsWith("/")) {
+            base = base.substring(0, base.length() - 1);
+        }
+        if (post == homePost || post.isHome() || "index".equalsIgnoreCase(post.getSlug())) {
+            return base + "/";
+        } else {
+            return base + "/" + post.getSlug() + ".html";
+        }
+    }
+
     private String escapeJson(String text) {
         if (text == null) {
             return "";
@@ -1730,6 +1824,11 @@ public class HtmlGenerator {
         return text.replace("\\", "\\\\")
                 .replace("\"", "\\\"")
                 .replace("\n", "\\n")
-                .replace("\r", "\\r");
+                .replace("\r", "\\r")
+                .replace("\t", "\\t");
+    }
+
+    private String escapeJsonString(String text) {
+        return "\"" + escapeJson(text) + "\"";
     }
 }

@@ -13,6 +13,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BlogifyEngineFormatTest {
@@ -182,5 +183,78 @@ class BlogifyEngineFormatTest {
         String articlesHtml = Files.readString(articlesFile);
         assertTrue(articlesHtml.contains("Other Guide"), "articles.html should list other guide");
         assertTrue(articlesHtml.contains("Blogify Articles"), "articles.html should have articles heading");
+    }
+
+    @Test
+    void testHtmlGenerationWithBlogHomeAndPortfolioJson() throws IOException {
+        Path blogDir = tempDir.resolve("blogs/blogify");
+        Files.createDirectories(blogDir);
+
+        String postMd = """
+                ---
+                title: "Blogify Engine"
+                slug: "blogify"
+                home: true
+                category: "Developer Tools"
+                date: "2026-11-20"
+                description: "Automated blogging"
+                tags: [Java, Gradle]
+                repoUrl: "https://github.com/krushnatkhawale/blogify"
+                ---
+                
+                # Blogify Overview
+                The static blog engine.
+                """;
+        Files.writeString(blogDir.resolve("index.md"), postMd);
+
+        Path otherBlogDir = tempDir.resolve("blogs/other");
+        Files.createDirectories(otherBlogDir);
+        String otherMd = """
+                ---
+                title: "Other Guide"
+                slug: "other-guide"
+                category: "Architecture"
+                tags: [Microservices]
+                repoUrl: "https://github.com/krushnatkhawale/blogify"
+                ---
+                Other content
+                """;
+        Files.writeString(otherBlogDir.resolve("index.md"), otherMd);
+
+        Path outDir = tempDir.resolve("out_bloghome");
+        BlogifyEngine engine = new BlogifyEngine();
+        String blogHome = "http://localhost:3000/#/blogs";
+        engine.generate(Collections.singletonList(tempDir.resolve("blogs").toFile()), outDir.toFile(), "Blogify", true, "html", "primer", false, blogHome, null);
+
+        Path indexFile = outDir.resolve("index.html");
+        Path otherFile = outDir.resolve("other-guide.html");
+        Path blogsJsonFile = outDir.resolve("blogs.json");
+
+        assertTrue(Files.exists(indexFile), "index.html should exist");
+        assertTrue(Files.exists(otherFile), "other-guide.html should exist");
+        assertTrue(Files.exists(blogsJsonFile), "blogs.json should exist");
+
+        String indexHtml = Files.readString(indexFile);
+        // Header navigation should have "← Back to Blogs" linking to blogHome
+        assertTrue(indexHtml.contains("href=\"http://localhost:3000/#/blogs\""), "index.html header should link to blogHome");
+        assertTrue(indexHtml.contains("← Back to Blogs"), "index.html should have ← Back to Blogs text");
+        // Option A: "Articles" link should NOT be present in nav
+        assertFalse(indexHtml.contains("href=\"articles.html\">📚 Articles</a>"), "index.html should not have separate articles link when blogHome is active");
+
+        String otherHtml = Files.readString(otherFile);
+        // Breadcrumb should link to blogHome
+        assertTrue(otherHtml.contains("<div class=\"breadcrumb\"><a href=\"http://localhost:3000/#/blogs\">← Back to Blogs</a></div>"), "other post breadcrumb should link to blogHome");
+
+        // Verify blogs.json content
+        String blogsJson = Files.readString(blogsJsonFile);
+        assertTrue(blogsJson.contains("\"id\": \"blogify\""));
+        assertTrue(blogsJson.contains("\"title\": \"Blogify Engine\""));
+        assertTrue(blogsJson.contains("\"category\": \"Developer Tools\""));
+        assertTrue(blogsJson.contains("\"link\": \"https://krushnatkhawale.github.io/blogify/\""));
+        assertTrue(blogsJson.contains("\"tags\": [\"Java\", \"Gradle\"]"));
+
+        assertTrue(blogsJson.contains("\"id\": \"other-guide\""));
+        assertTrue(blogsJson.contains("\"category\": \"Architecture\""));
+        assertTrue(blogsJson.contains("\"link\": \"https://krushnatkhawale.github.io/blogify/other-guide.html\""));
     }
 }

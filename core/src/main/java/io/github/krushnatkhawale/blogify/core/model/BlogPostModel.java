@@ -33,6 +33,7 @@ public class BlogPostModel implements Comparable<BlogPostModel> {
     private String supersededMessage = "";
     private String rawBody = "";
     private boolean home;
+    private String category = "";
 
     public BlogPostModel(String title, String slug, String author, String date, String description, boolean draft, int order) {
         this.title = title != null ? title : "";
@@ -228,6 +229,23 @@ public class BlogPostModel implements Comparable<BlogPostModel> {
 
     public void setHome(boolean home) {
         this.home = home;
+    }
+
+    public String getCategory() {
+        if (category != null && !category.isBlank()) {
+            return category;
+        }
+        if (!tags.isEmpty()) {
+            String firstTag = tags.iterator().next();
+            if (!firstTag.isBlank()) {
+                return Character.toUpperCase(firstTag.charAt(0)) + (firstTag.length() > 1 ? firstTag.substring(1) : "");
+            }
+        }
+        return "Engineering";
+    }
+
+    public void setCategory(String category) {
+        this.category = category != null ? category : "";
     }
 
     @Override

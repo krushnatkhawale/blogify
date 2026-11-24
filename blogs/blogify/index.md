@@ -2,6 +2,7 @@
 title: "Blogify: A Blog Generator for Java-Based Applications"
 slug: "blogify"
 home: true
+category: "Developer Tools"
 author: "Krushnat Khawale"
 date: "2026-11-21"
 description: "How we eliminated runtime dependencies and documentation drift by compiling story-first technical blogs directly from code and markdown."

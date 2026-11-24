@@ -30,6 +30,12 @@ public class BlogifyEngine {
         this.htmlGenerator = new HtmlGenerator();
     }
 
+    private String lastGeneratedPortfolioJson = "";
+
+    public String getLastGeneratedPortfolioJson() {
+        return lastGeneratedPortfolioJson;
+    }
+
     public List<Path> generate(List<File> sourceDirs, File outputDir, String siteTitle, boolean generateIndex) throws IOException {
         return generate(sourceDirs, outputDir, siteTitle, generateIndex, BlogFormat.GITHUB_PAGES.getValue(), "primer");
     }
@@ -43,6 +49,10 @@ public class BlogifyEngine {
     }
 
     public List<Path> generate(List<File> sourceDirs, File outputDir, String siteTitle, boolean generateIndex, String formatStr, String theme, boolean includeDrafts) throws IOException {
+        return generate(sourceDirs, outputDir, siteTitle, generateIndex, formatStr, theme, includeDrafts, null, null);
+    }
+
+    public List<Path> generate(List<File> sourceDirs, File outputDir, String siteTitle, boolean generateIndex, String formatStr, String theme, boolean includeDrafts, String blogHome, String siteUrl) throws IOException {
         BlogFormat format = BlogFormat.fromString(formatStr);
         String selectedTheme = (theme != null && !theme.isBlank()) ? theme : "primer";
         List<BlogPostModel> allPosts = new ArrayList<>();
@@ -76,7 +86,8 @@ public class BlogifyEngine {
 
                 // Always generate an HTML preview folder inside outputDir/preview for zero-setup local visualization
                 File previewDir = new File(outputDir, "preview");
-                htmlGenerator.generate(previewDir, siteTitle, allPosts, selectedTheme, includeDrafts);
+                htmlGenerator.generate(previewDir, siteTitle, allPosts, selectedTheme, includeDrafts, blogHome, siteUrl);
+                this.lastGeneratedPortfolioJson = htmlGenerator.getLastGeneratedPortfolioJson();
 
                 // Also generate AI discoverability files at output root
                 Path llmsFile = outputDir.toPath().resolve("llms.txt");
@@ -90,10 +101,15 @@ public class BlogifyEngine {
                 Path robotsFile = outputDir.toPath().resolve("robots.txt");
                 Files.copy(previewDir.toPath().resolve("robots.txt"), robotsFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
                 writtenFiles.add(robotsFile);
+
+                Path blogsJsonFile = outputDir.toPath().resolve("blogs.json");
+                Files.copy(previewDir.toPath().resolve("blogs.json"), blogsJsonFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                writtenFiles.add(blogsJsonFile);
             }
             case HTML -> {
                 // Generate standalone static HTML, CSS, llms.txt directly into outputDir
-                writtenFiles.addAll(htmlGenerator.generate(outputDir, siteTitle, allPosts, selectedTheme, includeDrafts));
+                writtenFiles.addAll(htmlGenerator.generate(outputDir, siteTitle, allPosts, selectedTheme, includeDrafts, blogHome, siteUrl));
+                this.lastGeneratedPortfolioJson = htmlGenerator.getLastGeneratedPortfolioJson();
             }
             case MARKDOWN -> {
                 for (BlogPostModel post : allPosts) {
@@ -111,7 +127,8 @@ public class BlogifyEngine {
                 }
 
                 File previewDir = new File(outputDir, "preview");
-                htmlGenerator.generate(previewDir, siteTitle, allPosts, selectedTheme);
+                htmlGenerator.generate(previewDir, siteTitle, allPosts, selectedTheme, includeDrafts, blogHome, siteUrl);
+                this.lastGeneratedPortfolioJson = htmlGenerator.getLastGeneratedPortfolioJson();
             }
         }
 

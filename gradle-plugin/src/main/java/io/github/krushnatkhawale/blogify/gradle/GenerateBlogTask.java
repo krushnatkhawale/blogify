@@ -66,6 +66,24 @@ public abstract class GenerateBlogTask extends DefaultTask {
         getIncludeDrafts().set(include);
     }
 
+    @Input
+    @Optional
+    public abstract Property<String> getBlogHome();
+
+    @org.gradle.api.tasks.options.Option(option = "blog-home", description = "URL of external blog home (e.g. portfolio blogs page).")
+    public void setBlogHomeOption(String blogHome) {
+        getBlogHome().set(blogHome);
+    }
+
+    @Input
+    @Optional
+    public abstract Property<String> getSiteUrl();
+
+    @org.gradle.api.tasks.options.Option(option = "site-url", description = "Public base URL of this blog.")
+    public void setSiteUrlOption(String siteUrl) {
+        getSiteUrl().set(siteUrl);
+    }
+
     @TaskAction
     public void generate() throws IOException {
         File src = getSourceDir().getAsFile().getOrNull();
@@ -99,6 +117,22 @@ public abstract class GenerateBlogTask extends DefaultTask {
 
         boolean includeDrafts = getIncludeDrafts().getOrElse(false);
 
+        String blogHome = null;
+        Object propBlogHome = getProject().findProperty("blogHome");
+        if (propBlogHome != null && !propBlogHome.toString().isBlank()) {
+            blogHome = propBlogHome.toString();
+        } else {
+            blogHome = getBlogHome().getOrNull();
+        }
+
+        String siteUrl = null;
+        Object propSiteUrl = getProject().findProperty("siteUrl");
+        if (propSiteUrl != null && !propSiteUrl.toString().isBlank()) {
+            siteUrl = propSiteUrl.toString();
+        } else {
+            siteUrl = getSiteUrl().getOrNull();
+        }
+
         BlogifyEngine engine = new BlogifyEngine();
         List<Path> generated = engine.generate(
                 scanDirs,
@@ -107,12 +141,25 @@ public abstract class GenerateBlogTask extends DefaultTask {
                 getGenerateIndex().get(),
                 format,
                 theme,
-                includeDrafts
+                includeDrafts,
+                blogHome,
+                siteUrl
         );
 
         getLogger().lifecycle("[Blogify] Generated {} blog artifact(s) into {}", generated.size(), out.getAbsolutePath());
         for (Path p : generated) {
             getLogger().info("[Blogify] - {}", p.getFileName());
+        }
+
+        String portfolioJson = engine.getLastGeneratedPortfolioJson();
+        if (portfolioJson != null && !portfolioJson.isBlank()) {
+            getLogger().lifecycle("");
+            getLogger().lifecycle("======================================================================");
+            getLogger().lifecycle("  📋 Portfolio / Blog Hub JSON (for your frontend/src/data/blogs.json):");
+            getLogger().lifecycle("======================================================================");
+            getLogger().lifecycle(portfolioJson.trim());
+            getLogger().lifecycle("======================================================================");
+            getLogger().lifecycle("");
         }
     }
 

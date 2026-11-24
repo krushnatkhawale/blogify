@@ -80,6 +80,7 @@ public class MarkdownBlogParser {
         // Tags
         List<String> tags = getList(frontmatter, "tags");
         post.addTags(tags);
+        post.setCategory(getString(frontmatter, "category"));
 
         // Story-First & Version Metadata
         post.setProblem(getString(frontmatter, "problem"));

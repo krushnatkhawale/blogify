@@ -47,6 +47,20 @@ public class BlogifyPlugin implements Plugin<Project> {
         extension.getPublishBranch().convention("gh-pages");
         extension.getPublishRemote().convention("origin");
 
+        Object cliBlogHome = project.findProperty("blogHome");
+        if (cliBlogHome != null && !cliBlogHome.toString().isBlank()) {
+            extension.getBlogHome().convention(cliBlogHome.toString());
+        } else {
+            extension.getBlogHome().convention("");
+        }
+
+        Object cliSiteUrl = project.findProperty("siteUrl");
+        if (cliSiteUrl != null && !cliSiteUrl.toString().isBlank()) {
+            extension.getSiteUrl().convention(cliSiteUrl.toString());
+        } else {
+            extension.getSiteUrl().convention("");
+        }
+
         TaskProvider<GenerateBlogTask> generateTaskProvider = project.getTasks().register(TASK_NAME, GenerateBlogTask.class, task -> {
             task.setGroup("documentation");
             task.setDescription("Generates static Markdown blog posts from Java source code and root blogs/ bundles.");
@@ -59,6 +73,8 @@ public class BlogifyPlugin implements Plugin<Project> {
             task.getRepoUrl().set(extension.getRepoUrl());
             task.getGenerateIndex().set(extension.getGenerateIndex());
             task.getIncludeDrafts().set(extension.getIncludeDrafts());
+            task.getBlogHome().set(extension.getBlogHome());
+            task.getSiteUrl().set(extension.getSiteUrl());
         });
 
         project.getTasks().register(PREVIEW_TASK_NAME, PreviewBlogTask.class, task -> {
