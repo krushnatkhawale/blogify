@@ -45,7 +45,7 @@ In your `build.gradle`:
 
 ```groovy
 plugins {
-    id 'io.github.krushnatkhawale.blogify' version '0.1.0'
+    id 'io.github.krushnatkhawale.blogify' version '0.2.0'
 }
 
 blogify {
@@ -163,6 +163,22 @@ blogify {
 
     // Git remote or repository URL (default: 'origin' or repoUrl)
     publishRemote = 'origin'
+
+    // Optional external blog home URL (e.g. portfolio blogs page 'https://krushnatkhawale.github.io/#/blogs')
+    // When configured, navigation replaces separate 'Home' & 'Articles' links with a unified '← Back to Blogs'
+    blogHome = 'https://krushnatkhawale.github.io/#/blogs'
+
+    // Optional public canonical URL where this blog is hosted (e.g. 'https://krushnatkhawale.github.io/blogify/')
+    // Used when generating portfolio cards in blogs.json (auto-derived from repoUrl if omitted)
+    siteUrl = 'https://krushnatkhawale.github.io/blogify/'
+
+    // Optional Google Analytics 4 Measurement ID (e.g. 'G-5BJKLL1EXD')
+    // Injects official gtag.js with granular page_path and page_title tracking across all pages
+    googleAnalyticsId = 'G-5BJKLL1EXD'
+
+    // Optional on-page live visitor count badge (powered by CountAPI; cookieless, GDPR-compliant, no sign-up)
+    enableVisitorCounter = true
+    counterNamespace = 'my-blog-namespace' // Optional: auto-derived from repoUrl if omitted
 }
 ```
 
@@ -239,6 +255,81 @@ Every Blogify build generates:
 - **`llms-full.txt`**: Complete concatenated plain-text corpus enabling single-prompt full documentation ingest.
 - **`robots.txt`**: Permissive configuration allowing `GPTBot`, `ClaudeBot`, and `PerplexityBot`.
 - **JSON-LD Schema**: Embedded `TechArticle` structured data in every HTML page.
+
+## Publishing the Plugin to the Gradle Plugin Portal
+
+The Blogify Gradle plugin is officially published on the [Gradle Plugin Portal](https://plugins.gradle.org/plugin/io.github.krushnatkhawale.blogify). Follow this procedure whenever releasing a new version.
+
+### 1. Prerequisites & Credentials
+
+You need an active publisher account on [plugins.gradle.org](https://plugins.gradle.org/).
+Once logged in, obtain your API Key and Secret under your account settings.
+
+Configure your credentials using **either** method:
+
+* **Option A: User Gradle Properties (Recommended)**  
+  In your home directory `~/.gradle/gradle.properties`:
+  ```properties
+  gradle.publish.key=YOUR_GRADLE_PUBLISH_KEY
+  gradle.publish.secret=YOUR_GRADLE_PUBLISH_SECRET
+  ```
+
+* **Option B: Environment Variables**  
+  ```bash
+  export GRADLE_PUBLISH_KEY="YOUR_GRADLE_PUBLISH_KEY"
+  export GRADLE_PUBLISH_SECRET="YOUR_GRADLE_PUBLISH_SECRET"
+  ```
+
+---
+
+### 2. Local Terminal Publishing Procedure
+
+#### Step 1: Bump the Version
+In [`gradle.properties`](gradle.properties), update the version number (e.g., `version=0.2.0`):
+```properties
+group=io.github.krushnatkhawale.blogify
+version=0.2.0
+```
+> [!NOTE]
+> The Gradle Plugin Portal requires strictly increasing version numbers and rejects overwriting existing releases.
+
+#### Step 2: Validate Builds & Tests
+Ensure all unit and functional tests pass:
+```bash
+./gradlew check
+```
+
+#### Step 3: Publish to the Portal
+Run the publication task:
+```bash
+./gradlew :gradle-plugin:publishPlugins
+```
+This builds `:core` and `:gradle-plugin`, signs the artifacts if signing keys are configured, and uploads the plugin marker and JARs to `plugins.gradle.org`. Within minutes, the new version becomes live for the JVM community.
+
+#### Step 4: Tag & Push Git Release
+Create and push an annotated Git release tag:
+```bash
+./gradlew createReleaseTag -Ppush
+```
+Or manually using Git:
+```bash
+git tag -a v0.2.0 -m "Release v0.2.0"
+git push origin v0.2.0
+```
+
+---
+
+### 3. Automated Publishing via GitHub Actions
+
+A continuous delivery workflow is configured in [`.github/workflows/publish-plugin.yml`](.github/workflows/publish-plugin.yml):
+
+1. Add your credentials as GitHub Repository Secrets (**Settings** ➔ **Secrets and variables** ➔ **Actions**):
+   * `GRADLE_PUBLISH_KEY`
+   * `GRADLE_PUBLISH_SECRET`
+2. **Pushing a release tag** (`git push origin v0.2.0`) automatically kicks off the workflow, runs tests, and publishes the plugin.
+3. You can also trigger a publication manually on-demand from GitHub's **Actions** tab (`workflow_dispatch`).
+
+---
 
 ## License
 

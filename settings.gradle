@@ -12,8 +12,16 @@ include 'core'
 include 'gradle-plugin'
 
 // The sample module demonstrates consuming the published plugin.
-// Conditionally include it if installed in local Maven, or in CI after local publication.
-def localPluginInstalled = new File(System.getProperty('user.home'), '.m2/repository/io/github/krushnatkhawale/blogify/gradle-plugin/0.1.0').exists()
+// Conditionally include it if the current version is installed in local Maven, or in CI after local publication.
+def versionFile = new File(rootDir, 'gradle.properties')
+def currentVersion = '0.2.0'
+if (versionFile.exists()) {
+    def props = new Properties()
+    versionFile.withInputStream { props.load(it) }
+    currentVersion = props.getProperty('version', '0.2.0').trim()
+}
+def localPluginInstalled = new File(System.getProperty('user.home'), ".m2/repository/io/github/krushnatkhawale/blogify/gradle-plugin/${currentVersion}").exists()
 if (localPluginInstalled) {
     include 'sample'
 }
+

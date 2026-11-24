@@ -7,7 +7,7 @@ author: "Krushnat Khawale"
 date: "2026-11-21"
 description: "How we eliminated runtime dependencies and documentation drift by compiling story-first technical blogs directly from code and markdown."
 tags: [java, blog-automation, gradle, static-site, gh-pages, documentation, open-source]
-version: "0.1.0"
+version: "0.2.0"
 commit: "98ed70b"
 repoUrl: "https://github.com/krushnatkhawale/blogify"
 status: "active"
@@ -179,7 +179,7 @@ Add the plugin to your `build.gradle`:
 
 ```groovy
 plugins {
-    id 'io.github.krushnatkhawale.blogify' version '0.1.0'
+    id 'io.github.krushnatkhawale.blogify' version '0.2.0'
 }
 
 blogify {
