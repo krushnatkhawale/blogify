@@ -84,6 +84,33 @@ public abstract class GenerateBlogTask extends DefaultTask {
         getSiteUrl().set(siteUrl);
     }
 
+    @Input
+    @Optional
+    public abstract Property<String> getGoogleAnalyticsId();
+
+    @org.gradle.api.tasks.options.Option(option = "google-analytics-id", description = "Google Analytics Measurement ID (e.g. G-5BJKLL1EXD).")
+    public void setGoogleAnalyticsIdOption(String gaId) {
+        getGoogleAnalyticsId().set(gaId);
+    }
+
+    @Input
+    @Optional
+    public abstract Property<Boolean> getEnableVisitorCounter();
+
+    @org.gradle.api.tasks.options.Option(option = "enable-visitor-counter", description = "Enable on-page live visitor count badge.")
+    public void setEnableVisitorCounterOption(boolean enable) {
+        getEnableVisitorCounter().set(enable);
+    }
+
+    @Input
+    @Optional
+    public abstract Property<String> getCounterNamespace();
+
+    @org.gradle.api.tasks.options.Option(option = "counter-namespace", description = "Custom namespace for visitor counter.")
+    public void setCounterNamespaceOption(String namespace) {
+        getCounterNamespace().set(namespace);
+    }
+
     @TaskAction
     public void generate() throws IOException {
         File src = getSourceDir().getAsFile().getOrNull();
@@ -126,6 +153,17 @@ public abstract class GenerateBlogTask extends DefaultTask {
             siteUrl = null;
         }
 
+        String gaId = getGoogleAnalyticsId().getOrNull();
+        if (gaId != null && gaId.isBlank()) {
+            gaId = null;
+        }
+
+        boolean enableCounter = getEnableVisitorCounter().getOrElse(false);
+        String counterNamespace = getCounterNamespace().getOrNull();
+        if (counterNamespace != null && counterNamespace.isBlank()) {
+            counterNamespace = null;
+        }
+
         BlogifyEngine engine = new BlogifyEngine();
         List<Path> generated = engine.generate(
                 scanDirs,
@@ -136,7 +174,10 @@ public abstract class GenerateBlogTask extends DefaultTask {
                 theme,
                 includeDrafts,
                 blogHome,
-                siteUrl
+                siteUrl,
+                gaId,
+                enableCounter,
+                counterNamespace
         );
 
         getLogger().lifecycle("[Blogify] Generated {} blog artifact(s) into {}", generated.size(), out.getAbsolutePath());

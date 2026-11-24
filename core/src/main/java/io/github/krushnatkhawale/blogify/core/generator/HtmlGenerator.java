@@ -38,18 +38,22 @@ public class HtmlGenerator {
     }
 
     public List<Path> generate(File outputDir, String siteTitle, List<BlogPostModel> posts) throws IOException {
-        return generate(outputDir, siteTitle, posts, "primer", false, null, null);
+        return generate(outputDir, siteTitle, posts, "primer", false, null, null, null, false, null);
     }
 
     public List<Path> generate(File outputDir, String siteTitle, List<BlogPostModel> posts, String defaultTheme) throws IOException {
-        return generate(outputDir, siteTitle, posts, defaultTheme, false, null, null);
+        return generate(outputDir, siteTitle, posts, defaultTheme, false, null, null, null, false, null);
     }
 
     public List<Path> generate(File outputDir, String siteTitle, List<BlogPostModel> posts, String defaultTheme, boolean includeDrafts) throws IOException {
-        return generate(outputDir, siteTitle, posts, defaultTheme, includeDrafts, null, null);
+        return generate(outputDir, siteTitle, posts, defaultTheme, includeDrafts, null, null, null, false, null);
     }
 
     public List<Path> generate(File outputDir, String siteTitle, List<BlogPostModel> posts, String defaultTheme, boolean includeDrafts, String blogHome, String siteUrl) throws IOException {
+        return generate(outputDir, siteTitle, posts, defaultTheme, includeDrafts, blogHome, siteUrl, null, false, null);
+    }
+
+    public List<Path> generate(File outputDir, String siteTitle, List<BlogPostModel> posts, String defaultTheme, boolean includeDrafts, String blogHome, String siteUrl, String googleAnalyticsId, boolean enableVisitorCounter, String counterNamespace) throws IOException {
         List<Path> writtenFiles = new ArrayList<>();
 
         Path outPath = outputDir.toPath();
@@ -84,11 +88,12 @@ public class HtmlGenerator {
         }
 
         boolean hasMultipleArticles = publishablePosts.size() > 1;
+        String resolvedNamespace = computeCounterNamespace(counterNamespace, title, (homePost != null ? homePost.getRepoUrl() : ""));
 
         if (homePost != null) {
             // 3. index.html renders the homePost
             Path indexFile = outPath.resolve("index.html");
-            String indexHtml = buildPostHtml(title, homePost, theme, true, publishablePosts, hasMultipleArticles, blogHome);
+            String indexHtml = buildPostHtml(title, homePost, theme, true, publishablePosts, hasMultipleArticles, blogHome, googleAnalyticsId, enableVisitorCounter, resolvedNamespace);
             Files.writeString(indexFile, indexHtml, StandardCharsets.UTF_8);
             writtenFiles.add(indexFile);
 
@@ -102,7 +107,7 @@ public class HtmlGenerator {
             // 4. articles.html for catalog of all posts
             if (hasMultipleArticles) {
                 Path articlesFile = outPath.resolve("articles.html");
-                String articlesHtml = buildIndexHtml(title, publishablePosts, theme, true, blogHome);
+                String articlesHtml = buildIndexHtml(title, publishablePosts, theme, true, blogHome, googleAnalyticsId);
                 Files.writeString(articlesFile, articlesHtml, StandardCharsets.UTF_8);
                 writtenFiles.add(articlesFile);
             }
@@ -111,7 +116,7 @@ public class HtmlGenerator {
             for (BlogPostModel post : publishablePosts) {
                 if (post != homePost) {
                     Path postFile = outPath.resolve(post.getSlug() + ".html");
-                    String postHtml = buildPostHtml(title, post, theme, false, publishablePosts, hasMultipleArticles, blogHome);
+                    String postHtml = buildPostHtml(title, post, theme, false, publishablePosts, hasMultipleArticles, blogHome, googleAnalyticsId, enableVisitorCounter, resolvedNamespace);
                     Files.writeString(postFile, postHtml, StandardCharsets.UTF_8);
                     writtenFiles.add(postFile);
                 }
@@ -119,14 +124,14 @@ public class HtmlGenerator {
         } else {
             // 3. Standard catalog index.html
             Path indexFile = outPath.resolve("index.html");
-            String indexHtml = buildIndexHtml(title, publishablePosts, theme, false, blogHome);
+            String indexHtml = buildIndexHtml(title, publishablePosts, theme, false, blogHome, googleAnalyticsId);
             Files.writeString(indexFile, indexHtml, StandardCharsets.UTF_8);
             writtenFiles.add(indexFile);
 
             // 4. <slug>.html for each post
             for (BlogPostModel post : publishablePosts) {
                 Path postFile = outPath.resolve(post.getSlug() + ".html");
-                String postHtml = buildPostHtml(title, post, theme, false, publishablePosts, false, blogHome);
+                String postHtml = buildPostHtml(title, post, theme, false, publishablePosts, false, blogHome, googleAnalyticsId, enableVisitorCounter, resolvedNamespace);
                 Files.writeString(postFile, postHtml, StandardCharsets.UTF_8);
                 writtenFiles.add(postFile);
             }
@@ -168,6 +173,10 @@ public class HtmlGenerator {
     }
 
     private String buildIndexHtml(String siteTitle, List<BlogPostModel> posts, String defaultTheme, boolean hasHomePage, String blogHome) {
+        return buildIndexHtml(siteTitle, posts, defaultTheme, hasHomePage, blogHome, null);
+    }
+
+    private String buildIndexHtml(String siteTitle, List<BlogPostModel> posts, String defaultTheme, boolean hasHomePage, String blogHome, String googleAnalyticsId) {
         StringBuilder sb = new StringBuilder();
         sb.append("<!DOCTYPE html>\n<html lang=\"en\" data-theme=\"").append(escapeHtml(defaultTheme)).append("\" data-mode=\"light\">\n<head>\n");
         sb.append("  <meta charset=\"UTF-8\">\n");
@@ -176,6 +185,7 @@ public class HtmlGenerator {
         sb.append("  <link rel=\"stylesheet\" href=\"style.css\">\n");
         sb.append("  <link rel=\"alternate\" type=\"text/plain\" href=\"llms.txt\" title=\"LLM Knowledge Base\">\n");
         sb.append(buildThemeInitScript(defaultTheme));
+        sb.append(buildGoogleAnalyticsScript(googleAnalyticsId));
         sb.append("</head>\n<body>\n");
 
         sb.append(buildHeaderHtml(siteTitle, false, hasHomePage, blogHome));
@@ -290,6 +300,10 @@ public class HtmlGenerator {
     }
 
     private String buildPostHtml(String siteTitle, BlogPostModel post, String defaultTheme, boolean isHomePage, List<BlogPostModel> allPosts, boolean hasMultipleArticles, String blogHome) {
+        return buildPostHtml(siteTitle, post, defaultTheme, isHomePage, allPosts, hasMultipleArticles, blogHome, null, false, null);
+    }
+
+    private String buildPostHtml(String siteTitle, BlogPostModel post, String defaultTheme, boolean isHomePage, List<BlogPostModel> allPosts, boolean hasMultipleArticles, String blogHome, String googleAnalyticsId, boolean enableVisitorCounter, String counterNamespace) {
         StringBuilder sb = new StringBuilder();
         sb.append("<!DOCTYPE html>\n<html lang=\"en\" data-theme=\"").append(escapeHtml(defaultTheme)).append("\" data-mode=\"light\">\n<head>\n");
         sb.append("  <meta charset=\"UTF-8\">\n");
@@ -298,6 +312,7 @@ public class HtmlGenerator {
         sb.append("  <link rel=\"stylesheet\" href=\"style.css\">\n");
         sb.append(buildJsonLd(siteTitle, post));
         sb.append(buildThemeInitScript(defaultTheme));
+        sb.append(buildGoogleAnalyticsScript(googleAnalyticsId));
 
         // Include Mermaid.js for architecture diagrams
         sb.append("  <script type=\"module\">\n");
@@ -338,13 +353,16 @@ public class HtmlGenerator {
 
         sb.append("    <h1>").append(escapeHtml(post.getTitle())).append("</h1>\n\n");
 
-        // Meta Bar with Version Badge
+        // Meta Bar with Version Badge & Visitor Counter
         sb.append("    <div class=\"post-meta-bar\">\n");
         if (!post.getAuthor().isBlank()) {
             sb.append("      <span>✍️ <strong>").append(escapeHtml(post.getAuthor())).append("</strong></span>\n");
         }
         if (!post.getDate().isBlank()) {
             sb.append("      <span>📅 ").append(escapeHtml(post.getDate())).append("</span>\n");
+        }
+        if (enableVisitorCounter) {
+            sb.append("      <span class=\"visitor-counter-badge\" id=\"blogify-views-badge\" style=\"display:none;\">👁️ <strong id=\"blogify-views-count\">...</strong> views</span>\n");
         }
 
         // Subtle Source Code Version Badge
@@ -459,6 +477,10 @@ public class HtmlGenerator {
         sb.append("  </article>\n\n");
         sb.append(buildFooterHtml());
         sb.append(buildThemeSwitcherScript());
+        if (enableVisitorCounter) {
+            String slug = (post.getSlug() != null && !post.getSlug().isBlank()) ? post.getSlug() : "home";
+            sb.append(buildVisitorCounterScript(counterNamespace, slug));
+        }
         sb.append("</body>\n</html>");
 
         return sb.toString();
@@ -1387,6 +1409,17 @@ public class HtmlGenerator {
                   border-radius: 6px;
                   font-size: 0.82rem;
                 }
+                .visitor-counter-badge {
+                  display: inline-flex;
+                  align-items: center;
+                  gap: 0.35rem;
+                  background: var(--bg-secondary);
+                  border: 1px solid var(--border);
+                  padding: 0.2rem 0.6rem;
+                  border-radius: 6px;
+                  font-size: 0.82rem;
+                  color: var(--text-secondary);
+                }
                 .commit-link { color: var(--accent); text-decoration: none; font-weight: 500; }
                 .commit-link:hover { text-decoration: underline; }
 
@@ -1831,4 +1864,76 @@ public class HtmlGenerator {
     private String escapeJsonString(String text) {
         return "\"" + escapeJson(text) + "\"";
     }
+
+    private String buildGoogleAnalyticsScript(String gaId) {
+        if (gaId == null || gaId.isBlank()) {
+            return "";
+        }
+        String cleanId = escapeHtml(gaId.trim());
+        return "  <!-- Google tag (gtag.js) -->\n"
+                + "  <script async src=\"https://www.googletagmanager.com/gtag/js?id=" + cleanId + "\"></script>\n"
+                + "  <script>\n"
+                + "    window.dataLayer = window.dataLayer || [];\n"
+                + "    function gtag(){dataLayer.push(arguments);}\n"
+                + "    gtag('js', new Date());\n"
+                + "    gtag('config', '" + cleanId + "');\n"
+                + "  </script>\n";
+    }
+
+    private String buildVisitorCounterScript(String namespace, String key) {
+        if (namespace == null || namespace.isBlank() || key == null || key.isBlank()) {
+            return "";
+        }
+        String cleanNs = escapeJson(namespace.trim().toLowerCase());
+        String cleanKey = escapeJson(key.trim().toLowerCase());
+        return "  <script>\n"
+                + "    (function() {\n"
+                + "      var ns = \"" + cleanNs + "\";\n"
+                + "      var key = \"" + cleanKey + "\";\n"
+                + "      var badge = document.getElementById('blogify-views-badge');\n"
+                + "      var countEl = document.getElementById('blogify-views-count');\n"
+                + "      if (!badge || !countEl) return;\n"
+                + "      fetch('https://api.counterapi.dev/v1/' + encodeURIComponent(ns) + '/' + encodeURIComponent(key) + '/up')\n"
+                + "        .then(function(res) { return res.ok ? res.json() : null; })\n"
+                + "        .then(function(data) {\n"
+                + "          if (data && typeof data.count !== 'undefined') {\n"
+                + "            countEl.textContent = Number(data.count).toLocaleString();\n"
+                + "            badge.style.display = 'inline-flex';\n"
+                + "          }\n"
+                + "        })\n"
+                + "        .catch(function(err) {\n"
+                + "          console.debug('Visitor counter unavailable', err);\n"
+                + "        });\n"
+                + "    })();\n"
+                + "  </script>\n";
+    }
+
+    public static String computeCounterNamespace(String customNamespace, String siteTitle, String repoUrl) {
+        if (customNamespace != null && !customNamespace.isBlank()) {
+            return sanitizeNamespace(customNamespace);
+        }
+        if (repoUrl != null && repoUrl.contains("github.com/")) {
+            String path = repoUrl.substring(repoUrl.indexOf("github.com/") + "github.com/".length());
+            if (path.endsWith(".git")) {
+                path = path.substring(0, path.length() - 4);
+            }
+            String sanitized = sanitizeNamespace(path.replace("/", "-"));
+            if (!sanitized.isBlank()) {
+                return sanitized;
+            }
+        }
+        if (siteTitle != null && !siteTitle.isBlank()) {
+            String sanitized = sanitizeNamespace(siteTitle);
+            if (!sanitized.isBlank()) {
+                return sanitized;
+            }
+        }
+        return "blogify";
+    }
+
+    private static String sanitizeNamespace(String str) {
+        if (str == null) return "";
+        return str.toLowerCase().replaceAll("[^a-z0-9_-]", "-").replaceAll("-+", "-").replaceAll("^-|-$", "");
+    }
 }
+

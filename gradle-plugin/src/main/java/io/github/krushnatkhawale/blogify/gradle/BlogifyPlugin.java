@@ -49,6 +49,9 @@ public class BlogifyPlugin implements Plugin<Project> {
 
         extension.getBlogHome().convention("");
         extension.getSiteUrl().convention("");
+        extension.getGoogleAnalyticsId().convention("");
+        extension.getEnableVisitorCounter().convention(false);
+        extension.getCounterNamespace().convention("");
 
         TaskProvider<GenerateBlogTask> generateTaskProvider = project.getTasks().register(TASK_NAME, GenerateBlogTask.class, task -> {
             task.setGroup("documentation");
@@ -64,6 +67,9 @@ public class BlogifyPlugin implements Plugin<Project> {
             task.getIncludeDrafts().set(extension.getIncludeDrafts());
             task.getBlogHome().set(extension.getBlogHome());
             task.getSiteUrl().set(extension.getSiteUrl());
+            task.getGoogleAnalyticsId().set(extension.getGoogleAnalyticsId());
+            task.getEnableVisitorCounter().set(extension.getEnableVisitorCounter());
+            task.getCounterNamespace().set(extension.getCounterNamespace());
         });
 
         project.getTasks().register(PREVIEW_TASK_NAME, PreviewBlogTask.class, task -> {

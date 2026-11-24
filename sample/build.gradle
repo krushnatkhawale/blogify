@@ -8,4 +8,9 @@ blogify {
     repoUrl = 'https://github.com/krushnatkhawale/blogify'
     theme = 'primer'
     blogHome = 'https://krushnatkhawale.github.io/#/blogs'
+    googleAnalyticsId = 'G-5BJKLL1EXD'
+    enableVisitorCounter = true
 }
+
+
+

@@ -97,4 +97,24 @@ public abstract class BlogifyExtension {
      * Used when generating portfolio cards in blogs.json. If omitted, automatically derived from repoUrl or git remote.
      */
     public abstract Property<String> getSiteUrl();
+
+    /**
+     * Google Analytics measurement ID (e.g. 'G-5BJKLL1EXD').
+     * If provided, Google tag (gtag.js) tracking will be injected into generated blog pages.
+     */
+    public abstract Property<String> getGoogleAnalyticsId();
+
+    /**
+     * Whether to show an on-page live visitor count badge on each blog post.
+     * Powered by CounterAPI (free, cookieless, GDPR-compliant hit counter).
+     * Defaults to false.
+     */
+    public abstract Property<Boolean> getEnableVisitorCounter();
+
+    /**
+     * Custom namespace for the visitor hit counter.
+     * If omitted, automatically derived from repoUrl or siteTitle.
+     */
+    public abstract Property<String> getCounterNamespace();
 }
+

@@ -257,4 +257,50 @@ class BlogifyEngineFormatTest {
         assertTrue(blogsJson.contains("\"category\": \"Architecture\""));
         assertTrue(blogsJson.contains("\"link\": \"https://krushnatkhawale.github.io/blogify/other-guide.html\""));
     }
+
+    @Test
+    void testGoogleAnalyticsAndVisitorCounterOptIn() throws IOException {
+        Path blogDir = tempDir.resolve("blogs_analytics/test-post");
+        Files.createDirectories(blogDir);
+        String postMd = """
+                ---
+                title: "Analytics Guide"
+                slug: "analytics-guide"
+                home: true
+                repoUrl: "https://github.com/krushnatkhawale/blogify"
+                ---
+                
+                # Test Analytics
+                Post content
+                """;
+        Files.writeString(blogDir.resolve("index.md"), postMd);
+
+        Path outDir = tempDir.resolve("out_analytics");
+        BlogifyEngine engine = new BlogifyEngine();
+
+        // 1. Test opt-out / default behavior: no GA, no visitor counter
+        engine.generate(Collections.singletonList(tempDir.resolve("blogs_analytics").toFile()),
+                outDir.toFile(), "Blogify", true, "html", "primer", false, null, null, null, false, null);
+
+        Path indexFile = outDir.resolve("index.html");
+        String htmlOptOut = Files.readString(indexFile);
+        assertFalse(htmlOptOut.contains("googletagmanager.com"), "GA4 script should not be present when not configured");
+        assertFalse(htmlOptOut.contains("gtag("), "gtag should not be present when not configured");
+        assertFalse(htmlOptOut.contains("blogify-views-badge"), "Visitor counter badge should not be present when disabled");
+        assertFalse(htmlOptOut.contains("api.counterapi.dev"), "CounterAPI script should not be present when disabled");
+
+        // 2. Test opt-in behavior: GA4 enabled and visitor counter enabled
+        Path outDirOptIn = tempDir.resolve("out_analytics_optin");
+        engine.generate(Collections.singletonList(tempDir.resolve("blogs_analytics").toFile()),
+                outDirOptIn.toFile(), "Blogify", true, "html", "primer", false, null, null, "G-5BJKLL1EXD", true, null);
+
+        Path indexOptInFile = outDirOptIn.resolve("index.html");
+        String htmlOptIn = Files.readString(indexOptInFile);
+        assertTrue(htmlOptIn.contains("https://www.googletagmanager.com/gtag/js?id=G-5BJKLL1EXD"), "GA4 script should be loaded");
+        assertTrue(htmlOptIn.contains("gtag('config', 'G-5BJKLL1EXD')"), "GA4 gtag config should be initialized");
+        assertTrue(htmlOptIn.contains("id=\"blogify-views-badge\""), "Visitor counter badge should be rendered");
+        assertTrue(htmlOptIn.contains("https://api.counterapi.dev/v1/"), "CounterAPI fetch should be injected");
+        assertTrue(htmlOptIn.contains("var ns = \"krushnatkhawale-blogify\""), "Counter namespace should be derived from repoUrl");
+    }
 }
+
