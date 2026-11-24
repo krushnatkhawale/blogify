@@ -1,0 +1,39 @@
+# Blogify
+
+> Curated technical articles and architecture specifications generated directly from codebase and documentation.
+
+## Available Guides
+
+- [Blogify: A Blog Generator for Java-Based Applications](index.html): How we eliminated runtime dependencies and documentation drift by compiling story-first technical blogs directly from code and markdown. (Version: 0.2.0)
+- [Idempotent Order Processing Under Extreme Network Latency](idempotent-order-processing.html): How we achieved zero duplicate transactions during 500ms network timeouts using deterministic hash keys. (Version: v1.2.0)
+- [Resilient Payment Gateway with Adaptive Circuit Breakers](resilient-payment-gateway.html): Designing a self-healing payment routing mesh that degrades gracefully during downstream PSP outages. (Version: v2.0.0)
+- [Synchronous Direct Billing Engine (Legacy Architecture)](legacy-synchronous-billing.html): Original monolithic synchronous payment processing engine. Kept for historical reference. (Version: v0.8.0) [Status: RETIRED]
+- [Designing an Idempotent Order Processing Pipeline](designing-idempotent-order-processing.html): A deep dive into building fault-tolerant and idempotent order workflows in modern Java backend systems. (Version: v1.2.0)
+- [Resilient Payment Gateway Integration Patterns](resilient-payment-gateway-integration.html): Techniques for integrating external payment APIs with circuit breakers and fallback handlers.
+
+## Architectural Takeaways
+
+### Blogify: A Blog Generator for Java-Based Applications
+- Co-locate architecture blogs with the codebase in version control to eliminate documentation drift.
+- Keep production lean: technical blogs should generate at compile time with zero runtime dependencies.
+- AI discoverability via llms.txt ensures that modern LLMs index concise, token-efficient architecture context.
+- Publishing should be frictionless: an on-demand task pushes directly to GitHub Pages without complex CI actions.
+
+### Idempotent Order Processing Under Extreme Network Latency
+- Never rely on the client's clock for idempotency windows; compute hash boundaries from canonical business data.
+- Return identical HTTP 200 responses for duplicate invocations to make retries completely transparent.
+- Anchor your blog documentation directly to immutable git commit snapshots so readers never face drift.
+
+### Resilient Payment Gateway with Adaptive Circuit Breakers
+- Fail fast: a 50ms fast-fail error or fallback is infinitely better than hanging client connections for 30s.
+- Always test half-open probe states under synthetic Canary traffic before resetting primary traffic.
+- Store fallback transactions in an asynchronous reconciliation queue to verify settlement integrity.
+
+### Synchronous Direct Billing Engine (Legacy Architecture)
+- Synchronous payment processing does not scale to high-concurrency e-commerce workloads.
+- Monolithic single-gateway integrations create critical business single points of failure.
+
+### Designing an Idempotent Order Processing Pipeline
+- Compute idempotency hashes from business state, never trusting client timestamps alone.
+- Transparently return the cached original 200 OK receipt upon duplicate retry requests.
+

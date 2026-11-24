@@ -1,0 +1,56 @@
+[
+  {
+    "id": "blogify",
+    "title": "Blogify: A Blog Generator for Java-Based Applications",
+    "description": "How we eliminated runtime dependencies and documentation drift by compiling story-first technical blogs directly from code and markdown.",
+    "date": "2026-11-21",
+    "category": "Developer Tools",
+    "link": "https://krushnatkhawale.github.io/blogify/",
+    "tags": ["java", "blog-automation", "gradle", "static-site", "gh-pages", "documentation", "open-source"]
+  },
+  {
+    "id": "idempotent-order-processing",
+    "title": "Idempotent Order Processing Under Extreme Network Latency",
+    "description": "How we achieved zero duplicate transactions during 500ms network timeouts using deterministic hash keys.",
+    "date": "2026-11-20",
+    "category": "Resilience",
+    "link": "https://example.github.io/blogify/idempotent-order-processing.html",
+    "tags": ["resilience", "idempotency", "distributed-systems"]
+  },
+  {
+    "id": "resilient-payment-gateway",
+    "title": "Resilient Payment Gateway with Adaptive Circuit Breakers",
+    "description": "Designing a self-healing payment routing mesh that degrades gracefully during downstream PSP outages.",
+    "date": "2026-11-21",
+    "category": "Fintech",
+    "link": "https://example.github.io/blogify/resilient-payment-gateway.html",
+    "tags": ["fintech", "circuit-breaker", "high-availability"]
+  },
+  {
+    "id": "legacy-synchronous-billing",
+    "title": "Synchronous Direct Billing Engine (Legacy Architecture)",
+    "description": "Original monolithic synchronous payment processing engine. Kept for historical reference.",
+    "date": "2024-03-15",
+    "category": "Legacy",
+    "link": "https://example.github.io/blogify/legacy-synchronous-billing.html",
+    "tags": ["legacy", "payments", "monolith"]
+  },
+  {
+    "id": "designing-idempotent-order-processing",
+    "title": "Designing an Idempotent Order Processing Pipeline",
+    "description": "A deep dive into building fault-tolerant and idempotent order workflows in modern Java backend systems.",
+    "date": "2026-11-21",
+    "category": "Architecture",
+    "link": "https://krushnatkhawale.github.io/blogify/designing-idempotent-order-processing.html",
+    "tags": ["architecture", "java", "distributed-systems", "backend"]
+  },
+  {
+    "id": "resilient-payment-gateway-integration",
+    "title": "Resilient Payment Gateway Integration Patterns",
+    "description": "Techniques for integrating external payment APIs with circuit breakers and fallback handlers.",
+    "date": "2026-11-21",
+    "category": "Fintech",
+    "link": "https://krushnatkhawale.github.io/blogify/resilient-payment-gateway-integration.html",
+    "tags": ["fintech", "resilience", "patterns"]
+  }
+]

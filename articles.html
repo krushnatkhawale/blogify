@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="primer" data-mode="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blogify - All Articles</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="alternate" type="text/plain" href="llms.txt" title="LLM Knowledge Base">
+  <script>
+    (function() {
+      var savedTheme = localStorage.getItem('blogify-theme') || 'primer';
+      var savedMode = localStorage.getItem('blogify-mode') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', savedTheme);
+      document.documentElement.setAttribute('data-mode', savedMode);
+    })();
+  </script>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-5BJKLL1EXD"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-5BJKLL1EXD', {
+      page_path: window.location.pathname,
+      page_title: document.title
+    });
+  </script>
+</head>
+<body>
+  <header>
+    <div class="header-container">
+      <a href="https://krushnatkhawale.github.io/#/blogs" class="brand-title">⚡ Blogify <span class="badge-compile-time">COMPILED</span></a>
+      <div class="header-actions">
+        <nav class="nav-links">
+          <a href="https://krushnatkhawale.github.io/#/blogs">← Back to Blogs</a>
+          <a href="llms.txt" class="nav-ai-link" title="AI Discoverability Feed">AI llms.txt</a>
+        </nav>
+        <div class="theme-controls">
+          <select id="theme-select" class="theme-dropdown" aria-label="Theme Switcher" onchange="switchBlogTheme(this.value)">
+            <option value="primer">Primer</option>
+            <option value="editorial">Editorial</option>
+            <option value="minimal">Minimal</option>
+          </select>
+          <button id="mode-toggle-btn" class="mode-btn" aria-label="Toggle Light/Dark Mode" onclick="toggleColorMode()" title="Toggle dark/light mode">🌓</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1>Blogify Articles</h1>
+      <p class="hero-subtitle">Complete directory of technical articles and architecture specifications. <a href="https://krushnatkhawale.github.io/#/blogs">← Back to Blogs</a></p>
+      <div class="ai-badge-row">
+        <a href="llms.txt" class="ai-link-badge" title="Formatted knowledge feed for AI agents and LLMs">🤖 llms.txt</a>
+        <a href="llms-full.txt" class="ai-link-badge" title="Full corpus for LLM ingest">📄 llms-full.txt</a>
+      </div>
+    </section>
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <h2 class="post-title"><a href="index.html">Blogify: A Blog Generator for Java-Based Applications</a></h2>
+        <span class="badge-home">MAIN</span>
+      </div>
+      <div class="post-meta">
+        <span>📅 2026-11-21</span>
+        <span>•</span><span>✍️ Krushnat Khawale</span>
+        <span>•</span><span class="meta-source">Source: <strong>0.2.0</strong> (98ed70b)</span>
+      </div>
+      <p class="post-desc">How we eliminated runtime dependencies and documentation drift by compiling story-first technical blogs directly from code and markdown.</p>
+      <div class="tag-list">
+        <span class="tag">#java</span>
+        <span class="tag">#blog-automation</span>
+        <span class="tag">#gradle</span>
+        <span class="tag">#static-site</span>
+        <span class="tag">#gh-pages</span>
+        <span class="tag">#documentation</span>
+        <span class="tag">#open-source</span>
+      </div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <h2 class="post-title"><a href="idempotent-order-processing.html">Idempotent Order Processing Under Extreme Network Latency</a></h2>
+      </div>
+      <div class="post-meta">
+        <span>📅 2026-11-20</span>
+        <span>•</span><span>✍️ Distributed Systems Team</span>
+        <span>•</span><span class="meta-source">Source: <strong>v1.2.0</strong> (8f3b21a)</span>
+      </div>
+      <p class="post-desc">How we achieved zero duplicate transactions during 500ms network timeouts using deterministic hash keys.</p>
+      <div class="tag-list">
+        <span class="tag">#resilience</span>
+        <span class="tag">#idempotency</span>
+        <span class="tag">#distributed-systems</span>
+      </div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <h2 class="post-title"><a href="resilient-payment-gateway.html">Resilient Payment Gateway with Adaptive Circuit Breakers</a></h2>
+      </div>
+      <div class="post-meta">
+        <span>📅 2026-11-21</span>
+        <span>•</span><span>✍️ Platform Engineering</span>
+        <span>•</span><span class="meta-source">Source: <strong>v2.0.0</strong> (4e91c2b)</span>
+      </div>
+      <p class="post-desc">Designing a self-healing payment routing mesh that degrades gracefully during downstream PSP outages.</p>
+      <div class="tag-list">
+        <span class="tag">#fintech</span>
+        <span class="tag">#circuit-breaker</span>
+        <span class="tag">#high-availability</span>
+      </div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <h2 class="post-title"><a href="designing-idempotent-order-processing.html">Designing an Idempotent Order Processing Pipeline</a></h2>
+      </div>
+      <div class="post-meta">
+        <span>📅 2026-11-21</span>
+        <span>•</span><span>✍️ Lead Architect</span>
+        <span>•</span><span class="meta-source">Source: <strong>v1.2.0</strong> (8f3b21a)</span>
+      </div>
+      <p class="post-desc">A deep dive into building fault-tolerant and idempotent order workflows in modern Java backend systems.</p>
+      <div class="tag-list">
+        <span class="tag">#architecture</span>
+        <span class="tag">#java</span>
+        <span class="tag">#distributed-systems</span>
+        <span class="tag">#backend</span>
+      </div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <h2 class="post-title"><a href="resilient-payment-gateway-integration.html">Resilient Payment Gateway Integration Patterns</a></h2>
+      </div>
+      <div class="post-meta">
+        <span>📅 2026-11-21</span>
+        <span>•</span><span>✍️ Payments Team</span>
+      </div>
+      <p class="post-desc">Techniques for integrating external payment APIs with circuit breakers and fallback handlers.</p>
+      <div class="tag-list">
+        <span class="tag">#fintech</span>
+        <span class="tag">#resilience</span>
+        <span class="tag">#patterns</span>
+      </div>
+    </div>
+
+    <section class="archived-section">
+      <h2 class="archived-heading">📦 Archived & Retired Architecture Guides</h2>
+      <p class="archived-desc">The following articles describe older system iterations retained for immutable version tracking.</p>
+    <div class="post-card post-card-retired">
+      <div class="post-card-header">
+        <h2 class="post-title"><a href="legacy-synchronous-billing.html">Synchronous Direct Billing Engine (Legacy Architecture)</a></h2>
+        <span class="badge-retired">RETIRED</span>
+      </div>
+      <div class="post-meta">
+        <span>📅 2024-03-15</span>
+        <span>•</span><span>✍️ Legacy Billing Team</span>
+        <span>•</span><span class="meta-source">Source: <strong>v0.8.0</strong> (1a2b3c4)</span>
+      </div>
+      <p class="post-desc">Original monolithic synchronous payment processing engine. Kept for historical reference.</p>
+      <div class="tag-list">
+        <span class="tag">#legacy</span>
+        <span class="tag">#payments</span>
+        <span class="tag">#monolith</span>
+      </div>
+    </div>
+
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-container">
+      <p>Generated by <strong>Blogify</strong> • Zero runtime dependencies • Ready for GitHub Pages</p>
+      <p class="footer-ai-note">AI Discoverability enabled: <a href="llms.txt">llms.txt</a> &bull; <a href="llms-full.txt">llms-full.txt</a></p>
+    </div>
+  </footer>
+  <script>
+    function switchBlogTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('blogify-theme', theme);
+    }
+    function toggleColorMode() {
+      var cur = document.documentElement.getAttribute('data-mode') || 'light';
+      var next = cur === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-mode', next);
+      localStorage.setItem('blogify-mode', next);
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+      var curTheme = document.documentElement.getAttribute('data-theme') || 'primer';
+      var sel = document.getElementById('theme-select');
+      if (sel) sel.value = curTheme;
+
+      // Auto-playing Carousel Controller
+      document.querySelectorAll('.carousel-container').forEach(function(carousel) {
+        var slides = carousel.querySelectorAll('.carousel-slide');
+        var dots = carousel.querySelectorAll('.carousel-dot');
+        var prevBtn = carousel.querySelector('.carousel-prev');
+        var nextBtn = carousel.querySelector('.carousel-next');
+        if (slides.length <= 1) {
+          if (prevBtn) prevBtn.style.display = 'none';
+          if (nextBtn) nextBtn.style.display = 'none';
+          var dotsWrap = carousel.querySelector('.carousel-dots');
+          if (dotsWrap) dotsWrap.style.display = 'none';
+          return;
+        }
+        var curIdx = 0;
+        var autoplayInterval = parseInt(carousel.getAttribute('data-autoplay') || '4000', 10);
+        var timer = null;
+
+        function showSlide(idx) {
+          if (idx < 0) idx = slides.length - 1;
+          if (idx >= slides.length) idx = 0;
+          curIdx = idx;
+          slides.forEach(function(s, i) {
+            if (i === curIdx) {
+              s.classList.add('active');
+            } else {
+              s.classList.remove('active');
+            }
+          });
+          dots.forEach(function(d, i) {
+            if (i === curIdx) {
+              d.classList.add('active');
+            } else {
+              d.classList.remove('active');
+            }
+          });
+        }
+
+        function startTimer() {
+          if (autoplayInterval > 0 && !timer) {
+            timer = setInterval(function() {
+              showSlide(curIdx + 1);
+            }, autoplayInterval);
+          }
+        }
+
+        function stopTimer() {
+          if (timer) {
+            clearInterval(timer);
+            timer = null;
+          }
+        }
+
+        if (prevBtn) {
+          prevBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            showSlide(curIdx - 1);
+          });
+        }
+
+        if (nextBtn) {
+          nextBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            showSlide(curIdx + 1);
+          });
+        }
+
+        dots.forEach(function(dot) {
+          dot.addEventListener('click', function(e) {
+            e.preventDefault();
+            var i = parseInt(dot.getAttribute('data-index'), 10);
+            showSlide(i);
+          });
+        });
+
+        carousel.addEventListener('mouseenter', stopTimer);
+        carousel.addEventListener('mouseleave', startTimer);
+        carousel.addEventListener('touchstart', stopTimer, { passive: true });
+        carousel.addEventListener('touchend', startTimer, { passive: true });
+
+        startTimer();
+      });
+    });
+  </script>
+</body>
+</html>
