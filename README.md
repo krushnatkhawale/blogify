@@ -198,19 +198,74 @@ Running `./gradlew build` or pushing code to CI will **only** compile and test y
 
 ---
 
+## Multi-Module Projects & Submodules
+
+Blogify natively supports multi-module Java Gradle builds (e.g. `adapter`, `metadata-client`):
+
+```groovy
+// In root build.gradle:
+plugins {
+    id 'io.github.krushnatkhawale.blogify' version '0.3.0' apply false
+}
+
+subprojects {
+    apply plugin: 'io.github.krushnatkhawale.blogify'
+
+    blogify {
+        blogHome = 'https://krushnatkhawale.github.io/#/blogs'
+        format = 'html'
+    }
+}
+```
+
+### Module Content Resolution
+Each submodule automatically checks for dedicated content:
+1. `rootProject/blogs/<submoduleName>/index.md` (e.g. `blogs/adapter/index.md`)
+2. `submodule/blogs/index.md`
+3. Fallback to `rootProject/blogs/`
+
+### Dynamic Site Title & Version Inference
+`siteTitle` defaults to the submodule name, but can be seamlessly configured or overridden:
+1. **CLI / Property**: `--site-title="My Title"` or `-PsiteTitle="My Title"`
+2. **Metadata file (`blogify.info`)**: A simple properties file placed alongside your blog bundle:
+   ```properties
+   siteTitle = Spring Batch Integration Adapter
+   version = 0.1.0
+   author = Krushna Khawale
+   category = Engineering
+   tags = Spring Batch, Integration, ETL
+   ```
+3. **Markdown Frontmatter**: `siteTitle: "Spring Batch Integration Adapter"`
+4. **Primary Post Title**: If unspecified, uses the title of the module's primary article.
+
+### Versioned Slugs & GitHub Pages Safety
+Each submodule generates and deploys to an immutable versioned directory:
+```
+<siteUrl>/<site-title-slug>/<version>/
+# Example: https://krushnatkhawale.github.io/spring-batch-example/spring-batch-integration-adapter/0.1.0/
+```
+- **Non-Destructive Publishing**: When running `:submodule:publishBlog`, Blogify fetches the existing `gh-pages` branch and overlays only that submodule's `<slug>/<version>/` folder without clobbering sibling submodules or previous versions.
+- **Unified `blogs.json`**: Portfolio feed entries across all submodules and versions are safely merged at the root of `gh-pages`.
+- **Zero `home: true` Friction**: Single-article submodules automatically compile directly to `<slug>/<version>/index.html`, routing back to `blogHome` via top navbar brand and breadcrumbs.
+
+---
+
 ## Publishing to GitHub Pages (Local & On-Demand)
 
 Publish directly from your local terminal with **zero GitHub Actions required**:
 
 ```bash
 ./gradlew publishBlog
+# Or for a specific submodule:
+./gradlew :adapter:publishBlog
 ```
 
 ### What this does:
-1. Compiles and generates the production static site (`index.html`, CSS, `.nojekyll`, `llms.txt`, `robots.txt`).
-2. Creates a clean, isolated commit tagged with your current source git commit SHA.
-3. Force-pushes directly to the `gh-pages` branch on GitHub.
-4. Leaves your local working tree and checked-out branch **completely untouched**.
+1. Compiles and generates the production static site (`index.html`, CSS, `.nojekyll`, `llms.txt`, `robots.txt`, `blogs.json`).
+2. Creates an isolated temporary publication workspace.
+3. Fetches the existing `gh-pages` branch, non-destructively overlays the new/updated version folder, and merges `blogs.json`.
+4. Pushes safely to `gh-pages` on GitHub without force-wiping other submodules.
+5. Leaves your local working tree and checked-out branch **completely untouched**.
 
 ### One-Time GitHub Setup
 In your GitHub repository:

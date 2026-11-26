@@ -20,7 +20,11 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
@@ -126,35 +130,68 @@ public abstract class PublishBlogTask extends DefaultTask {
         getLogger().lifecycle("======================================================================");
         getLogger().lifecycle("");
 
-        // 5. Initialize clean temporary git repository inside siteDir
-        File gitDir = new File(siteDir, ".git");
-        if (gitDir.exists()) {
-            deleteRecursively(gitDir.toPath());
+        // 5. Initialize isolated temporary git publication workspace
+        File tempWorkDir = new File(getTemporaryDir(), "gh-pages-publish-" + System.currentTimeMillis());
+        if (tempWorkDir.exists()) {
+            deleteRecursively(tempWorkDir.toPath());
         }
+        tempWorkDir.mkdirs();
 
         try {
-            executeGitCommand(siteDir, "init");
-            executeGitCommand(siteDir, "checkout", "-b", branch);
-            executeGitCommand(siteDir, "add", "-A");
+            executeGitCommand(tempWorkDir, "init");
+            executeGitCommand(tempWorkDir, "remote", "add", "origin", remoteUrl);
+
+            boolean branchExists = false;
+            try {
+                CommandResult lsRemote = executeGitCommand(tempWorkDir, "ls-remote", "--heads", "origin", branch);
+                if (!lsRemote.output.isBlank()) {
+                    branchExists = true;
+                }
+            } catch (Exception ignored) {
+            }
+
+            if (branchExists) {
+                getLogger().lifecycle("[Blogify] Fetching existing '{}' branch to merge publication safely...", branch);
+                executeGitCommand(tempWorkDir, "fetch", "--depth=1", "origin", branch);
+                executeGitCommand(tempWorkDir, "checkout", "-b", branch, "origin/" + branch);
+            } else {
+                getLogger().lifecycle("[Blogify] Initializing new orphan '{}' branch on remote...", branch);
+                executeGitCommand(tempWorkDir, "checkout", "--orphan", branch);
+            }
+
+            // Non-destructively overlay files from siteDir into tempWorkDir
+            overlayPublishDirectory(siteDir, tempWorkDir);
+
+            // Ensure .nojekyll is present at target root
+            File targetNoJekyll = new File(tempWorkDir, ".nojekyll");
+            if (!targetNoJekyll.exists()) {
+                Files.writeString(targetNoJekyll.toPath(), "# GitHub Pages: bypass Jekyll\n", StandardCharsets.UTF_8);
+            }
+
+            // Configure local committer name/email for this publication commit
+            executeGitCommand(tempWorkDir, "config", "user.name", "Blogify Publisher");
+            executeGitCommand(tempWorkDir, "config", "user.email", "blogify@users.noreply.github.com");
+
+            executeGitCommand(tempWorkDir, "add", "-A");
 
             // Check if there is anything to commit
-            CommandResult statusRes = executeGitCommand(siteDir, "status", "--porcelain");
+            CommandResult statusRes = executeGitCommand(tempWorkDir, "status", "--porcelain");
             if (statusRes.output.isBlank()) {
                 getLogger().lifecycle("[Blogify] No changes detected in blog output. Publishing is already up to date.");
                 return;
             }
 
-            // Configure local committer name/email for this publication commit if not globally set
-            executeGitCommand(siteDir, "config", "user.name", "Blogify Publisher");
-            executeGitCommand(siteDir, "config", "user.email", "blogify@users.noreply.github.com");
-
-            executeGitCommand(siteDir, "commit", "-m", message);
+            executeGitCommand(tempWorkDir, "commit", "-m", message);
 
             if (isDryRun) {
                 getLogger().lifecycle("[Blogify] [DRY RUN] Successfully prepared publication commit. Skipping 'git push'.");
             } else {
                 getLogger().lifecycle("[Blogify] Pushing static blog to {} ({branch})...", remoteUrl, branch);
-                executeGitCommand(siteDir, "push", "-f", remoteUrl, branch);
+                if (branchExists) {
+                    executeGitCommand(tempWorkDir, "push", "origin", branch);
+                } else {
+                    executeGitCommand(tempWorkDir, "push", "-u", "origin", branch);
+                }
                 getLogger().lifecycle("");
                 getLogger().lifecycle("======================================================================");
                 getLogger().lifecycle("  🚀 Blog published successfully to branch '{}'!", branch);
@@ -163,11 +200,120 @@ public abstract class PublishBlogTask extends DefaultTask {
                 getLogger().lifecycle("");
             }
         } finally {
-            // Clean up temporary .git directory to keep build output pristine
-            if (gitDir.exists()) {
-                deleteRecursively(gitDir.toPath());
+            if (tempWorkDir.exists()) {
+                deleteRecursively(tempWorkDir.toPath());
             }
         }
+    }
+
+    private void overlayPublishDirectory(File srcDir, File destDir) {
+        if (!srcDir.exists()) {
+            return;
+        }
+
+        try (var stream = Files.walk(srcDir.toPath())) {
+            stream.filter(Files::isRegularFile)
+                  .filter(p -> !p.toString().contains("/.git/"))
+                  .forEach(p -> {
+                      try {
+                          Path relativePath = srcDir.toPath().relativize(p);
+                          Path destPath = destDir.toPath().resolve(relativePath);
+
+                          if ("blogs.json".equals(relativePath.toString()) && Files.exists(destPath)) {
+                              // Safely merge existing blogs.json with incoming entries
+                              mergeBlogsJson(p.toFile(), destPath.toFile());
+                          } else {
+                              Files.createDirectories(destPath.getParent());
+                              Files.copy(p, destPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                          }
+                      } catch (Exception e) {
+                          getLogger().warn("[Blogify] Warning: failed to copy {} to publication: {}", p, e.getMessage());
+                      }
+                  });
+        } catch (Exception e) {
+            getLogger().warn("[Blogify] Warning traversing site directory: {}", e.getMessage());
+        }
+    }
+
+    private void mergeBlogsJson(File srcJson, File destJson) {
+        try {
+            String srcContent = Files.readString(srcJson.toPath(), StandardCharsets.UTF_8).trim();
+            String destContent = Files.readString(destJson.toPath(), StandardCharsets.UTF_8).trim();
+
+            List<String> destEntries = parseJsonArrayEntries(destContent);
+            List<String> srcEntries = parseJsonArrayEntries(srcContent);
+
+            Map<String, String> mergedMap = new LinkedHashMap<>();
+            for (String entry : destEntries) {
+                String id = extractJsonField(entry, "id");
+                if (!id.isBlank()) {
+                    mergedMap.put(id, entry);
+                } else {
+                    mergedMap.put(entry, entry);
+                }
+            }
+            for (String entry : srcEntries) {
+                String id = extractJsonField(entry, "id");
+                if (!id.isBlank()) {
+                    mergedMap.put(id, entry);
+                } else {
+                    mergedMap.put(entry, entry);
+                }
+            }
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("[\n");
+            List<String> allEntries = new ArrayList<>(mergedMap.values());
+            for (int i = 0; i < allEntries.size(); i++) {
+                sb.append("  ").append(allEntries.get(i).replace("\n", "\n  "));
+                if (i < allEntries.size() - 1) {
+                    sb.append(",");
+                }
+                sb.append("\n");
+            }
+            sb.append("]\n");
+
+            Files.writeString(destJson.toPath(), sb.toString(), StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            try {
+                Files.copy(srcJson.toPath(), destJson.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    private List<String> parseJsonArrayEntries(String json) {
+        List<String> list = new ArrayList<>();
+        if (json == null || json.isBlank() || !json.contains("{")) {
+            return list;
+        }
+        int depth = 0;
+        int start = -1;
+        for (int i = 0; i < json.length(); i++) {
+            char c = json.charAt(i);
+            if (c == '{') {
+                if (depth == 0) {
+                    start = i;
+                }
+                depth++;
+            } else if (c == '}') {
+                depth--;
+                if (depth == 0 && start != -1) {
+                    list.add(json.substring(start, i + 1).trim());
+                    start = -1;
+                }
+            }
+        }
+        return list;
+    }
+
+    private String extractJsonField(String objJson, String fieldName) {
+        Pattern p = Pattern.compile("\"" + Pattern.quote(fieldName) + "\"\\s*:\\s*\"([^\"]*)\"");
+        Matcher m = p.matcher(objJson);
+        if (m.find()) {
+            return m.group(1);
+        }
+        return "";
     }
 
     private void verifyGitAvailable(File workingDir) {

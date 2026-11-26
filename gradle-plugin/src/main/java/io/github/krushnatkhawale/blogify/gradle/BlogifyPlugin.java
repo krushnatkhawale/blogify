@@ -28,15 +28,33 @@ public class BlogifyPlugin implements Plugin<Project> {
         extension.getSourceDir().convention(
                 project.getLayout().getProjectDirectory().dir("src/main/java")
         );
-        // Anchor to the root project's blogs/ directory across all submodules
-        extension.getBlogsDir().convention(
-                project.getRootProject().getLayout().getProjectDirectory().dir("blogs")
-        );
+        // Smart multi-module blogs directory resolution:
+        // 1. rootProject/blogs/<projectName> (e.g. blogs/adapter)
+        // 2. project/blogs
+        // 3. rootProject/blogs
+        File rootBlogs = project.getRootProject().file("blogs");
+        File moduleBlogsInRoot = new File(rootBlogs, project.getName());
+        File moduleLocalBlogs = project.file("blogs");
+
+        if (project != project.getRootProject() && moduleBlogsInRoot.exists()) {
+            extension.getBlogsDir().convention(
+                    project.getLayout().getProjectDirectory().dir(moduleBlogsInRoot.getAbsolutePath())
+            );
+        } else if (moduleLocalBlogs.exists()) {
+            extension.getBlogsDir().convention(
+                    project.getLayout().getProjectDirectory().dir(moduleLocalBlogs.getAbsolutePath())
+            );
+        } else {
+            extension.getBlogsDir().convention(
+                    project.getRootProject().getLayout().getProjectDirectory().dir("blogs")
+            );
+        }
+
         extension.getOutputDir().convention(
                 project.getLayout().getBuildDirectory().dir("blog")
         );
         extension.getSiteTitle().convention(
-                project.getName() + " Blog"
+                project.getName()
         );
         extension.getFormat().convention("github-pages");
         extension.getTheme().convention("primer");

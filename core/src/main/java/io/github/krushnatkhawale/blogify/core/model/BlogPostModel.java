@@ -10,8 +10,8 @@ public class BlogPostModel implements Comparable<BlogPostModel> {
 
     private final String title;
     private final String slug;
-    private final String author;
-    private final String date;
+    private String author;
+    private String date;
     private final String description;
     private final boolean draft;
     private final int order;
@@ -34,6 +34,7 @@ public class BlogPostModel implements Comparable<BlogPostModel> {
     private String rawBody = "";
     private boolean home;
     private String category = "";
+    private String siteTitle = "";
 
     public BlogPostModel(String title, String slug, String author, String date, String description, boolean draft, int order) {
         this.title = title != null ? title : "";
@@ -57,8 +58,20 @@ public class BlogPostModel implements Comparable<BlogPostModel> {
         return author;
     }
 
+    public void setAuthor(String author) {
+        if (author != null && !author.isBlank()) {
+            this.author = author.trim();
+        }
+    }
+
     public String getDate() {
         return date;
+    }
+
+    public void setDate(String date) {
+        if (date != null && !date.isBlank()) {
+            this.date = date.trim();
+        }
     }
 
     public String getDescription() {
@@ -246,6 +259,14 @@ public class BlogPostModel implements Comparable<BlogPostModel> {
 
     public void setCategory(String category) {
         this.category = category != null ? category : "";
+    }
+
+    public String getSiteTitle() {
+        return siteTitle;
+    }
+
+    public void setSiteTitle(String siteTitle) {
+        this.siteTitle = siteTitle != null ? siteTitle : "";
     }
 
     @Override

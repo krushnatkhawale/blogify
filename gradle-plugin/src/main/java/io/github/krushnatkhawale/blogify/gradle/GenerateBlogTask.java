@@ -43,6 +43,11 @@ public abstract class GenerateBlogTask extends DefaultTask {
     @Input
     public abstract Property<String> getSiteTitle();
 
+    @org.gradle.api.tasks.options.Option(option = "site-title", description = "Site title for the blog.")
+    public void setSiteTitleOption(String siteTitle) {
+        getSiteTitle().set(siteTitle);
+    }
+
     @Input
     public abstract Property<String> getFormat();
 
@@ -164,6 +169,15 @@ public abstract class GenerateBlogTask extends DefaultTask {
             counterNamespace = null;
         }
 
+        if (getProject().hasProperty("siteTitle")) {
+            String pTitle = String.valueOf(getProject().property("siteTitle"));
+            if (pTitle != null && !pTitle.isBlank()) {
+                getSiteTitle().set(pTitle);
+            }
+        }
+
+        String version = getProject().getVersion() != null ? getProject().getVersion().toString() : "";
+
         BlogifyEngine engine = new BlogifyEngine();
         List<Path> generated = engine.generate(
                 scanDirs,
@@ -177,7 +191,8 @@ public abstract class GenerateBlogTask extends DefaultTask {
                 siteUrl,
                 gaId,
                 enableCounter,
-                counterNamespace
+                counterNamespace,
+                version
         );
 
         getLogger().lifecycle("[Blogify] Generated {} blog artifact(s) into {}", generated.size(), out.getAbsolutePath());

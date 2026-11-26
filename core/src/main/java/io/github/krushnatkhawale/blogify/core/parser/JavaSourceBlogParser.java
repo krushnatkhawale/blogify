@@ -33,6 +33,10 @@ import java.util.Optional;
  */
 public class JavaSourceBlogParser {
 
+    static {
+        StaticJavaParser.getConfiguration().setLanguageLevel(com.github.javaparser.ParserConfiguration.LanguageLevel.JAVA_21);
+    }
+
     public List<BlogPostModel> parse(Path javaFilePath) throws IOException {
         return parse(javaFilePath.toFile());
     }

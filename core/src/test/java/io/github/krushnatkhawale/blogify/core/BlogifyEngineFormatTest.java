@@ -304,5 +304,98 @@ class BlogifyEngineFormatTest {
         assertTrue(htmlOptIn.contains("https://countapi.mileshilliard.com/api/v1/"), "CountAPI fetch should be injected");
         assertTrue(htmlOptIn.contains("var ns = \"krushnatkhawale-blogify\""), "Counter namespace should be derived from repoUrl");
     }
+
+    @Test
+    void testBlogifyInfoMetadataAndVersionedFolderOutput() throws IOException {
+        Path blogDir = tempDir.resolve("module_blogs/adapter");
+        Files.createDirectories(blogDir);
+
+        String info = """
+                siteTitle = Spring Batch Integration Adapter
+                version = 0.1.0
+                author = Spring Team
+                category = Integration
+                tags = Spring Batch, Messaging
+                """;
+        Files.writeString(blogDir.resolve("blogify.info"), info);
+
+        String postMd = """
+                ---
+                title: "Adapter Architecture Guide"
+                slug: "adapter-architecture"
+                ---
+                Content for adapter.
+                """;
+        Files.writeString(blogDir.resolve("index.md"), postMd);
+
+        Path outDir = tempDir.resolve("out_versioned");
+        BlogifyEngine engine = new BlogifyEngine();
+        engine.generate(
+                Collections.singletonList(blogDir.toFile()),
+                outDir.toFile(),
+                "adapter", // Default module name
+                true,
+                "html",
+                "primer",
+                false,
+                "https://krushnatkhawale.github.io/#/blogs",
+                "https://krushnatkhawale.github.io/spring-batch-example",
+                null,
+                false,
+                null,
+                "0.1.0"
+        );
+
+        // Verify versioned folder exists: <slug>/<version>/
+        Path versionedDir = outDir.resolve("spring-batch-integration-adapter/0.1.0");
+        assertTrue(Files.exists(versionedDir), "Versioned directory should exist");
+        assertTrue(Files.exists(versionedDir.resolve("index.html")), "index.html should exist in versioned directory");
+        assertTrue(Files.exists(versionedDir.resolve("style.css")), "style.css should exist in versioned directory");
+
+        // Verify root index.html renders the blog
+        Path rootIndex = outDir.resolve("index.html");
+        assertTrue(Files.exists(rootIndex), "Root index.html should exist");
+        String rootHtml = Files.readString(rootIndex);
+        assertTrue(rootHtml.contains("Spring Batch Integration Adapter") || rootHtml.contains("Adapter Architecture Guide"),
+                "Root index should contain blog title or post title");
+
+        // Verify blogs.json has the versioned link
+        Path blogsJsonFile = outDir.resolve("blogs.json");
+        assertTrue(Files.exists(blogsJsonFile), "blogs.json should exist at root");
+        String blogsJson = Files.readString(blogsJsonFile);
+        assertTrue(blogsJson.contains("\"link\": \"https://krushnatkhawale.github.io/spring-batch-example/spring-batch-integration-adapter/0.1.0/\""),
+                "blogs.json should contain versioned link with siteUrl");
+    }
+
+    @Test
+    void testTitleInferenceFromMarkdownFrontmatter() throws IOException {
+        Path blogDir = tempDir.resolve("frontmatter_blogs");
+        Files.createDirectories(blogDir);
+
+        String postMd = """
+                ---
+                title: "SpringAI Batch Metadata Client Architecture"
+                siteTitle: "SpringAI Batch Client"
+                version: "0.2.0"
+                ---
+                Content
+                """;
+        Files.writeString(blogDir.resolve("index.md"), postMd);
+
+        Path outDir = tempDir.resolve("out_frontmatter");
+        BlogifyEngine engine = new BlogifyEngine();
+        engine.generate(
+                Collections.singletonList(blogDir.toFile()),
+                outDir.toFile(),
+                "springai-batch-metadata-client",
+                true,
+                "html"
+        );
+
+        // Since version was in frontmatter (0.2.0) and siteTitle was "SpringAI Batch Client"
+        Path versionedDir = outDir.resolve("springai-batch-client/0.2.0");
+        assertTrue(Files.exists(versionedDir), "Versioned directory derived from frontmatter siteTitle and version should exist");
+        assertTrue(Files.exists(versionedDir.resolve("index.html")), "Versioned index.html should exist");
+    }
 }
 

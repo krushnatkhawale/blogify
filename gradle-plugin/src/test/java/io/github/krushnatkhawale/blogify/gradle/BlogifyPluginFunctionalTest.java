@@ -202,4 +202,71 @@ class BlogifyPluginFunctionalTest {
                 "preview HTML should contain configured blogHome URL");
         assertTrue(previewHtml.contains("← Back to Blogs"), "should have back to blogs link");
     }
+
+    @Test
+    void testMultiModuleBlogGeneration() throws IOException {
+        Path multiProjectDir = testProjectDir.resolve("multi-app");
+        Files.createDirectories(multiProjectDir);
+
+        Files.writeString(multiProjectDir.resolve("settings.gradle"),
+                "rootProject.name = 'multi-app'\ninclude 'adapter', 'springai-batch-metadata-client'");
+
+        Files.createDirectories(multiProjectDir.resolve("adapter"));
+        Files.createDirectories(multiProjectDir.resolve("springai-batch-metadata-client"));
+
+        String buildScript = """
+                plugins {
+                    id 'io.github.krushnatkhawale.blogify' apply false
+                }
+
+                subprojects {
+                    apply plugin: 'java'
+                    apply plugin: 'io.github.krushnatkhawale.blogify'
+                    version = '1.0.0'
+                }
+                """;
+        Files.writeString(multiProjectDir.resolve("build.gradle"), buildScript);
+
+        // Root blogs/adapter and blogs/springai-batch-metadata-client
+        Path adapterBlogDir = multiProjectDir.resolve("blogs/adapter");
+        Files.createDirectories(adapterBlogDir);
+        String adapterMd = """
+                ---
+                title: "Adapter Architecture Guide"
+                siteTitle: "Spring Batch Integration Adapter"
+                ---
+                Adapter guide content.
+                """;
+        Files.writeString(adapterBlogDir.resolve("index.md"), adapterMd);
+
+        Path clientBlogDir = multiProjectDir.resolve("blogs/springai-batch-metadata-client");
+        Files.createDirectories(clientBlogDir);
+        String clientMd = """
+                ---
+                title: "Client Architecture Guide"
+                siteTitle: "SpringAI Batch Metadata Client"
+                ---
+                Client guide content.
+                """;
+        Files.writeString(clientBlogDir.resolve("index.md"), clientMd);
+
+        // Run both submodules' generateBlog tasks
+        BuildResult result = GradleRunner.create()
+                .withProjectDir(multiProjectDir.toFile())
+                .withPluginClasspath()
+                .withArguments(":adapter:generateBlog", ":springai-batch-metadata-client:generateBlog", "--stacktrace")
+                .build();
+
+        Path adapterOut = multiProjectDir.resolve("adapter/build/blog/spring-batch-integration-adapter/1.0.0/index.html");
+        Path clientOut = multiProjectDir.resolve("springai-batch-metadata-client/build/blog/springai-batch-metadata-client/1.0.0/index.html");
+
+        assertTrue(Files.exists(adapterOut), "Adapter versioned output should exist: " + adapterOut);
+        assertTrue(Files.exists(clientOut), "Client versioned output should exist: " + clientOut);
+
+        String adapterHtml = Files.readString(adapterOut);
+        assertTrue(adapterHtml.contains("Adapter Architecture Guide"));
+
+        String clientHtml = Files.readString(clientOut);
+        assertTrue(clientHtml.contains("Client Architecture Guide"));
+    }
 }
