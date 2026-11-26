@@ -58,7 +58,7 @@ public class BlogifyPlugin implements Plugin<Project> {
         );
         extension.getFormat().convention("github-pages");
         extension.getTheme().convention("primer");
-        extension.getRepoUrl().convention("");
+        extension.getRepoUrl().convention(project.provider(() -> resolveGitOriginRepoUrl(project.getRootProject().getProjectDir())));
         extension.getPreviewPort().convention(8080);
         extension.getGenerateIndex().convention(true);
         extension.getIncludeDrafts().convention(false);
@@ -66,7 +66,7 @@ public class BlogifyPlugin implements Plugin<Project> {
         extension.getPublishRemote().convention("origin");
 
         extension.getBlogHome().convention("");
-        extension.getSiteUrl().convention("");
+        extension.getSiteUrl().convention(project.provider(() -> resolveGitPagesSiteUrl(project.getRootProject().getProjectDir())));
         extension.getGoogleAnalyticsId().convention("");
         extension.getEnableVisitorCounter().convention(false);
         extension.getCounterNamespace().convention("");
@@ -96,6 +96,7 @@ public class BlogifyPlugin implements Plugin<Project> {
             task.dependsOn(generateTaskProvider);
             task.getOutputDir().set(extension.getOutputDir());
             task.getPort().set(extension.getPreviewPort());
+            task.getSiteUrl().set(extension.getSiteUrl());
         });
 
         project.getTasks().register(PUBLISH_TASK_NAME, PublishBlogTask.class, task -> {
@@ -107,6 +108,8 @@ public class BlogifyPlugin implements Plugin<Project> {
             task.getPublishRemote().set(extension.getPublishRemote());
             task.getPublishMessage().set(extension.getPublishMessage());
             task.getRepoUrl().set(extension.getRepoUrl());
+            task.getSiteUrl().set(extension.getSiteUrl());
+            task.getPreviewPort().set(extension.getPreviewPort());
         });
 
         // Ensure LLM authoring skill is present at rootProject/skills/blogify/SKILL.md
@@ -169,6 +172,11 @@ public class BlogifyPlugin implements Plugin<Project> {
                         When authoring articles for Blogify, always create a leaf bundle at:
                         `blogs/<topic-slug>/index.md`
 
+                        ## Title Rules
+                        - **Length**: Must be short: strictly 6 to 8 words.
+                        - **Convey the Problem**: Must directly state or highlight the concrete engineering problem / failure mode being solved (e.g., "Preventing Duplicate Charges Under High Network Latency", "Handling Out-of-Memory Errors in Spring Batch", "Eliminating Connection Pool Exhaustion Under Spike Load").
+                        - **Avoid Fluff**: Never use generic or vague titles like "How We Built X", "Introduction to Y", or lengthy academic descriptions.
+
                         ## Story-First Structure
                         1. **Problem**: Clear pain point or failure mode before this solution.
                         2. **Insight**: The non-obvious architecture pattern or design choice solving it.
@@ -176,10 +184,68 @@ public class BlogifyPlugin implements Plugin<Project> {
                         4. **Micro-Snippets**: Focused 5-15 line code snippets illustrating the core trick.
                         5. **Takeaways**: 2-4 actionable lessons for system designers.
                         6. **Version Metadata**: Explicit git commit snapshot and release version to prevent documentation drift.
+
+                        ## Workflow Rules: Generate vs Publish
+                        - **Generate Only**: When asked to generate blogs or write content, ONLY run `./gradlew generateBlog` (or `./gradlew :<module>:generateBlog`).
+                        - **Do NOT Publish Automatically**: NEVER run `./gradlew publishBlog` unless the user explicitly requests to publish or deploy to GitHub Pages. The user must review the generated blog first.
                         """;
                 Files.writeString(skillFile.toPath(), skillTemplate, StandardCharsets.UTF_8);
             }
         } catch (Exception ignored) {
+        }
+    }
+
+    private static String resolveGitOriginRepoUrl(File dir) {
+        String remote = resolveGitOriginRaw(dir);
+        if (remote == null || remote.isBlank()) {
+            return "";
+        }
+        if (remote.endsWith(".git")) {
+            remote = remote.substring(0, remote.length() - 4);
+        }
+        if (remote.startsWith("git@github.com:")) {
+            return "https://github.com/" + remote.substring("git@github.com:".length());
+        }
+        return remote;
+    }
+
+    private static String resolveGitPagesSiteUrl(File dir) {
+        String remote = resolveGitOriginRaw(dir);
+        if (remote == null || remote.isBlank()) {
+            return "";
+        }
+        String path = "";
+        if (remote.contains("github.com/")) {
+            path = remote.substring(remote.indexOf("github.com/") + "github.com/".length());
+        } else if (remote.contains("github.com:")) {
+            path = remote.substring(remote.indexOf("github.com:") + "github.com:".length());
+        }
+        if (path.endsWith(".git")) {
+            path = path.substring(0, path.length() - 4);
+        }
+        String[] parts = path.split("/");
+        if (parts.length >= 2) {
+            String owner = parts[0].toLowerCase();
+            String repo = parts[1];
+            if (repo.equalsIgnoreCase(owner + ".github.io")) {
+                return "https://" + owner + ".github.io";
+            }
+            return "https://" + owner + ".github.io/" + repo;
+        }
+        return "";
+    }
+
+    private static String resolveGitOriginRaw(File dir) {
+        try {
+            Process p = new ProcessBuilder("git", "config", "--get", "remote.origin.url")
+                    .directory(dir)
+                    .start();
+            try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8))) {
+                String line = r.readLine();
+                return line != null ? line.trim() : "";
+            }
+        } catch (Exception ignored) {
+            return "";
         }
     }
 }

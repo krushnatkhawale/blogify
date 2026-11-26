@@ -205,7 +205,7 @@ Blogify natively supports multi-module Java Gradle builds (e.g. `adapter`, `meta
 ```groovy
 // In root build.gradle:
 plugins {
-    id 'io.github.krushnatkhawale.blogify' version '0.3.0' apply false
+    id 'io.github.krushnatkhawale.blogify' version '0.3.1' apply false
 }
 
 subprojects {

@@ -208,6 +208,18 @@ public abstract class GenerateBlogTask extends DefaultTask {
             getLogger().lifecycle("======================================================================");
             getLogger().lifecycle(portfolioJson.trim());
             getLogger().lifecycle("======================================================================");
+            String slug = engine.getLastResolvedSlug();
+            String ver = engine.getLastResolvedVersion();
+            String subpath = !slug.isBlank() ? (!ver.isBlank() ? slug + "/" + ver + "/" : slug + "/") : "";
+            if (!subpath.isBlank()) {
+                getLogger().lifecycle("  💻 Localhost URL:      http://localhost:8080/{}", subpath);
+                if (siteUrl != null && !siteUrl.isBlank()) {
+                    String base = siteUrl.endsWith("/") ? siteUrl.substring(0, siteUrl.length() - 1) : siteUrl;
+                    getLogger().lifecycle("  🌐 Deployed Blog URL:  {}/{}", base, subpath);
+                }
+                getLogger().lifecycle("  Tip: Run './gradlew previewBlog' to test this blog locally.");
+                getLogger().lifecycle("======================================================================");
+            }
             getLogger().lifecycle("");
         }
     }

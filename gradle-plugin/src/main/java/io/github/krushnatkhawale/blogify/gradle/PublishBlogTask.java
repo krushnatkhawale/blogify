@@ -59,6 +59,14 @@ public abstract class PublishBlogTask extends DefaultTask {
     @Optional
     public abstract Property<String> getRepoUrl();
 
+    @Input
+    @Optional
+    public abstract Property<String> getSiteUrl();
+
+    @Input
+    @Optional
+    public abstract Property<Integer> getPreviewPort();
+
     @Option(option = "branch", description = "Target git branch for GitHub Pages publication (default: gh-pages)")
     public void setBranchOption(String branch) {
         getPublishBranch().set(branch);
@@ -119,18 +127,32 @@ public abstract class PublishBlogTask extends DefaultTask {
             message = "Deploy blog" + (sourceSha.isBlank() ? "" : " [commit " + sourceSha + "]") + " [skip ci]";
         }
 
+        // 5. Detect versioned subpath, localhost URL, and deployed URL
+        String subpath = detectVersionedSubpath(siteDir);
+        int previewPort = getPreviewPort().getOrElse(8080);
+        String localUrl = subpath.isBlank() ? "http://localhost:" + previewPort + "/" : "http://localhost:" + previewPort + "/" + subpath;
+        String deployedUrl = resolveDeployedBlogUrl(siteDir, remoteUrl, subpath);
+
         getLogger().lifecycle("");
         getLogger().lifecycle("======================================================================");
         getLogger().lifecycle("  ⚡ Blogify On-Demand Publisher");
-        getLogger().lifecycle("  Source Site:   {}", siteDir.getAbsolutePath());
-        getLogger().lifecycle("  Remote:        {} ({})", remote, remoteUrl);
-        getLogger().lifecycle("  Target Branch: {}", branch);
-        getLogger().lifecycle("  Commit Note:   {}", message);
-        getLogger().lifecycle("  Dry Run:       {}", isDryRun ? "YES (simulation only)" : "NO (will push)");
+        getLogger().lifecycle("  Source Site:           {}", siteDir.getAbsolutePath());
+        getLogger().lifecycle("  Remote:                {} ({})", remote, remoteUrl);
+        getLogger().lifecycle("  Target Branch:         {}", branch);
+        getLogger().lifecycle("  Commit Note:           {}", message);
+        getLogger().lifecycle("  Dry Run:               {}", isDryRun ? "YES (simulation only)" : "NO (will push)");
+        getLogger().lifecycle("----------------------------------------------------------------------");
+        if (!deployedUrl.isBlank()) {
+            getLogger().lifecycle("  🌐 Deployed Blog URL:  {}", deployedUrl);
+        }
+        getLogger().lifecycle("  💻 Localhost URL:      {}", localUrl);
+        if (!deployedUrl.isBlank()) {
+            getLogger().lifecycle("  📋 Link for blogs.json: {}", deployedUrl);
+        }
         getLogger().lifecycle("======================================================================");
         getLogger().lifecycle("");
 
-        // 5. Initialize isolated temporary git publication workspace
+        // 6. Initialize isolated temporary git publication workspace
         File tempWorkDir = new File(getTemporaryDir(), "gh-pages-publish-" + System.currentTimeMillis());
         if (tempWorkDir.exists()) {
             deleteRecursively(tempWorkDir.toPath());
@@ -178,6 +200,19 @@ public abstract class PublishBlogTask extends DefaultTask {
             CommandResult statusRes = executeGitCommand(tempWorkDir, "status", "--porcelain");
             if (statusRes.output.isBlank()) {
                 getLogger().lifecycle("[Blogify] No changes detected in blog output. Publishing is already up to date.");
+                getLogger().lifecycle("");
+                getLogger().lifecycle("======================================================================");
+                getLogger().lifecycle("  ⚡ Blog Already Up to Date");
+                if (!deployedUrl.isBlank()) {
+                    getLogger().lifecycle("  🌐 Deployed Blog URL:   {}", deployedUrl);
+                }
+                getLogger().lifecycle("  💻 Localhost URL:       {}", localUrl);
+                if (!deployedUrl.isBlank()) {
+                    getLogger().lifecycle("  📋 Link for blogs.json: {}", deployedUrl);
+                }
+                getLogger().lifecycle("  Tip: Run './gradlew previewBlog' to view locally at the localhost URL above.");
+                getLogger().lifecycle("======================================================================");
+                getLogger().lifecycle("");
                 return;
             }
 
@@ -185,6 +220,19 @@ public abstract class PublishBlogTask extends DefaultTask {
 
             if (isDryRun) {
                 getLogger().lifecycle("[Blogify] [DRY RUN] Successfully prepared publication commit. Skipping 'git push'.");
+                getLogger().lifecycle("");
+                getLogger().lifecycle("======================================================================");
+                getLogger().lifecycle("  ⚡ Publication Simulated Successfully (Dry Run)");
+                if (!deployedUrl.isBlank()) {
+                    getLogger().lifecycle("  🌐 Deployed Blog URL:   {}", deployedUrl);
+                }
+                getLogger().lifecycle("  💻 Localhost URL:       {}", localUrl);
+                if (!deployedUrl.isBlank()) {
+                    getLogger().lifecycle("  📋 Link for blogs.json: {}", deployedUrl);
+                }
+                getLogger().lifecycle("  Tip: Run './gradlew previewBlog' to test locally before pushing.");
+                getLogger().lifecycle("======================================================================");
+                getLogger().lifecycle("");
             } else {
                 getLogger().lifecycle("[Blogify] Pushing static blog to {} ({branch})...", remoteUrl, branch);
                 if (branchExists) {
@@ -195,7 +243,15 @@ public abstract class PublishBlogTask extends DefaultTask {
                 getLogger().lifecycle("");
                 getLogger().lifecycle("======================================================================");
                 getLogger().lifecycle("  🚀 Blog published successfully to branch '{}'!", branch);
+                if (!deployedUrl.isBlank()) {
+                    getLogger().lifecycle("  🌐 Deployed Blog URL:   {}", deployedUrl);
+                }
+                getLogger().lifecycle("  💻 Localhost URL:       {}", localUrl);
+                if (!deployedUrl.isBlank()) {
+                    getLogger().lifecycle("  📋 Link for blogs.json: {}", deployedUrl);
+                }
                 getLogger().lifecycle("  GitHub Pages will serve this branch automatically.");
+                getLogger().lifecycle("  Tip: Run './gradlew previewBlog' to view locally at the localhost URL above.");
                 getLogger().lifecycle("======================================================================");
                 getLogger().lifecycle("");
             }
@@ -397,6 +453,98 @@ public abstract class PublishBlogTask extends DefaultTask {
         } catch (IOException e) {
             throw new GradleException("Failed to execute git command", e);
         }
+    }
+
+    private String detectVersionedSubpath(File siteDir) {
+        File[] children = siteDir.listFiles(File::isDirectory);
+        if (children != null) {
+            for (File child : children) {
+                String name = child.getName();
+                if ("preview".equals(name) || name.startsWith(".")) {
+                    continue;
+                }
+                File[] subchildren = child.listFiles(File::isDirectory);
+                if (subchildren != null) {
+                    for (File subchild : subchildren) {
+                        if (new File(subchild, "index.html").exists()) {
+                            return name + "/" + subchild.getName() + "/";
+                        }
+                    }
+                }
+                if (new File(child, "index.html").exists()) {
+                    return name + "/";
+                }
+            }
+        }
+
+        File blogsJson = new File(siteDir, "blogs.json");
+        if (blogsJson.exists()) {
+            try {
+                String content = Files.readString(blogsJson.toPath(), StandardCharsets.UTF_8);
+                Pattern linkPattern = Pattern.compile("\"link\"\\s*:\\s*\"([^\"]+)\"");
+                Matcher m = linkPattern.matcher(content);
+                if (m.find()) {
+                    String link = m.group(1);
+                    try {
+                        java.net.URI uri = java.net.URI.create(link);
+                        String path = uri.getPath();
+                        if (path != null && !path.isBlank() && !path.equals("/")) {
+                            if (path.startsWith("/")) {
+                                path = path.substring(1);
+                            }
+                            return path.endsWith("/") ? path : path + "/";
+                        }
+                    } catch (Exception ignored) {
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        return "";
+    }
+
+    private String resolveDeployedBlogUrl(File siteDir, String remoteUrl, String subpath) {
+        File blogsJson = new File(siteDir, "blogs.json");
+        if (blogsJson.exists()) {
+            try {
+                String content = Files.readString(blogsJson.toPath(), StandardCharsets.UTF_8);
+                Pattern linkPattern = Pattern.compile("\"link\"\\s*:\\s*\"([^\"]+)\"");
+                Matcher m = linkPattern.matcher(content);
+                if (m.find()) {
+                    return m.group(1);
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        String siteUrlVal = getSiteUrl().getOrNull();
+        if (siteUrlVal != null && !siteUrlVal.isBlank()) {
+            String base = siteUrlVal.endsWith("/") ? siteUrlVal.substring(0, siteUrlVal.length() - 1) : siteUrlVal;
+            return subpath.isBlank() ? base + "/" : base + "/" + subpath;
+        }
+
+        if (remoteUrl != null && remoteUrl.contains("github.com")) {
+            String repoPart = "";
+            if (remoteUrl.contains("github.com/")) {
+                repoPart = remoteUrl.substring(remoteUrl.indexOf("github.com/") + "github.com/".length());
+            } else if (remoteUrl.contains("github.com:")) {
+                repoPart = remoteUrl.substring(remoteUrl.indexOf("github.com:") + "github.com:".length());
+            }
+            if (repoPart.endsWith(".git")) {
+                repoPart = repoPart.substring(0, repoPart.length() - 4);
+            }
+            String[] parts = repoPart.split("/");
+            if (parts.length >= 2) {
+                String owner = parts[0].toLowerCase();
+                String repo = parts[1];
+                if (repo.equalsIgnoreCase(owner + ".github.io")) {
+                    return "https://" + owner + ".github.io/" + subpath;
+                } else {
+                    return "https://" + owner + ".github.io/" + repo + "/" + subpath;
+                }
+            }
+        }
+        return subpath.isBlank() ? "" : "https://<owner>.github.io/" + subpath;
     }
 
     private void deleteRecursively(Path path) {

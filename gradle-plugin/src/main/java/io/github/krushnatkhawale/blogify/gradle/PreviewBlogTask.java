@@ -16,8 +16,11 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.work.DisableCachingByDefault;
@@ -35,6 +38,10 @@ public abstract class PreviewBlogTask extends DefaultTask {
     @Input
     @Optional
     public abstract Property<Boolean> getKeepAlive();
+
+    @Input
+    @Optional
+    public abstract Property<String> getSiteUrl();
 
     @Option(option = "port", description = "Port to bind local preview HTTP server.")
     public void setPortOption(String portStr) {
@@ -87,11 +94,24 @@ public abstract class PreviewBlogTask extends DefaultTask {
         server.start();
 
         String url = "http://localhost:" + activePort + "/";
+        String subpath = detectVersionedSubpath(serveDir);
+        String blogLocalUrl = subpath.isBlank() ? url : "http://localhost:" + activePort + "/" + subpath;
+        String deployedUrl = resolveDeployedBlogUrl(serveDir, subpath);
+
         getLogger().lifecycle("");
         getLogger().lifecycle("======================================================================");
         getLogger().lifecycle("  ⚡ Blogify Local Preview Server");
-        getLogger().lifecycle("  URL:          {}", url);
-        getLogger().lifecycle("  Serving from: {}", rootPath);
+        if (!subpath.isBlank()) {
+            getLogger().lifecycle("  💻 Localhost Blog URL: {}", blogLocalUrl);
+            getLogger().lifecycle("  🏠 Localhost Root URL: {}", url);
+        } else {
+            getLogger().lifecycle("  💻 Localhost URL:      {}", url);
+        }
+        if (!deployedUrl.isBlank()) {
+            getLogger().lifecycle("  🌐 Deployed Blog URL:  {}", deployedUrl);
+            getLogger().lifecycle("  📋 Link for blogs.json: {}", deployedUrl);
+        }
+        getLogger().lifecycle("  Serving from:          {}", rootPath);
         getLogger().lifecycle("======================================================================");
         getLogger().lifecycle("");
 
@@ -110,6 +130,76 @@ public abstract class PreviewBlogTask extends DefaultTask {
             server.stop(0);
             getLogger().lifecycle("[Blogify] Preview server test run completed.");
         }
+    }
+
+    private String detectVersionedSubpath(File siteDir) {
+        File[] children = siteDir.listFiles(File::isDirectory);
+        if (children != null) {
+            for (File child : children) {
+                String name = child.getName();
+                if ("preview".equals(name) || name.startsWith(".")) {
+                    continue;
+                }
+                File[] subchildren = child.listFiles(File::isDirectory);
+                if (subchildren != null) {
+                    for (File subchild : subchildren) {
+                        if (new File(subchild, "index.html").exists()) {
+                            return name + "/" + subchild.getName() + "/";
+                        }
+                    }
+                }
+                if (new File(child, "index.html").exists()) {
+                    return name + "/";
+                }
+            }
+        }
+
+        File blogsJson = new File(siteDir, "blogs.json");
+        if (blogsJson.exists()) {
+            try {
+                String content = Files.readString(blogsJson.toPath(), StandardCharsets.UTF_8);
+                Pattern linkPattern = Pattern.compile("\"link\"\\s*:\\s*\"([^\"]+)\"");
+                Matcher m = linkPattern.matcher(content);
+                if (m.find()) {
+                    String link = m.group(1);
+                    try {
+                        java.net.URI uri = java.net.URI.create(link);
+                        String path = uri.getPath();
+                        if (path != null && !path.isBlank() && !path.equals("/")) {
+                            if (path.startsWith("/")) {
+                                path = path.substring(1);
+                            }
+                            return path.endsWith("/") ? path : path + "/";
+                        }
+                    } catch (Exception ignored) {
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        return "";
+    }
+
+    private String resolveDeployedBlogUrl(File siteDir, String subpath) {
+        File blogsJson = new File(siteDir, "blogs.json");
+        if (blogsJson.exists()) {
+            try {
+                String content = Files.readString(blogsJson.toPath(), StandardCharsets.UTF_8);
+                Pattern linkPattern = Pattern.compile("\"link\"\\s*:\\s*\"([^\"]+)\"");
+                Matcher m = linkPattern.matcher(content);
+                if (m.find()) {
+                    return m.group(1);
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        String siteUrlVal = getSiteUrl().getOrNull();
+        if (siteUrlVal != null && !siteUrlVal.isBlank()) {
+            String base = siteUrlVal.endsWith("/") ? siteUrlVal.substring(0, siteUrlVal.length() - 1) : siteUrlVal;
+            return subpath.isBlank() ? base + "/" : base + "/" + subpath;
+        }
+        return "";
     }
 
     private static class StaticFileHandler implements HttpHandler {
@@ -134,6 +224,12 @@ public abstract class PreviewBlogTask extends DefaultTask {
             }
 
             if (Files.isDirectory(targetFile)) {
+                if (!requestPath.endsWith("/")) {
+                    exchange.getResponseHeaders().set("Location", requestPath + "/");
+                    exchange.sendResponseHeaders(302, -1);
+                    exchange.close();
+                    return;
+                }
                 targetFile = targetFile.resolve("index.html");
             }
 

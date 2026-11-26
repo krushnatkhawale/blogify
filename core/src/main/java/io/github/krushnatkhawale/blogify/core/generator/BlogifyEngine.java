@@ -31,9 +31,24 @@ public class BlogifyEngine {
     }
 
     private String lastGeneratedPortfolioJson = "";
+    private String lastResolvedSlug = "";
+    private String lastResolvedVersion = "";
+    private String lastResolvedTitle = "";
 
     public String getLastGeneratedPortfolioJson() {
         return lastGeneratedPortfolioJson;
+    }
+
+    public String getLastResolvedSlug() {
+        return lastResolvedSlug;
+    }
+
+    public String getLastResolvedVersion() {
+        return lastResolvedVersion;
+    }
+
+    public String getLastResolvedTitle() {
+        return lastResolvedTitle;
     }
 
     public List<Path> generate(List<File> sourceDirs, File outputDir, String siteTitle, boolean generateIndex) throws IOException {
@@ -117,6 +132,10 @@ public class BlogifyEngine {
         if (slug.isBlank()) {
             slug = slugify(resolvedTitle);
         }
+
+        this.lastResolvedTitle = resolvedTitle;
+        this.lastResolvedVersion = resolvedVersion;
+        this.lastResolvedSlug = slug;
 
         File versionedDir = !resolvedVersion.isBlank() ? new File(outputDir, slug + "/" + resolvedVersion) : new File(outputDir, slug);
         versionedDir.mkdirs();
